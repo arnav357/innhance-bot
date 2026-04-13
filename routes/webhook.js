@@ -246,6 +246,7 @@ async function sendButtons(to, bodyText, buttons, phoneNumberId, token) {
   }
 }
 
+
 async function sendList(to, bodyText, sections, phoneNumberId, token) {
   try {
     await axios.post(
@@ -254,7 +255,7 @@ async function sendList(to, bodyText, sections, phoneNumberId, token) {
         messaging_product: 'whatsapp', to, type: 'interactive',
         interactive: {
           type: 'list', body: { text: bodyText },
-          action: { button: '👇 View Options', sections },
+          action: { button: 'View Options', sections },
         },
       },
       { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
@@ -291,10 +292,10 @@ async function sendRoomMenu(to, phoneNumberId, token, hotel) {
 
   if (hotel.rooms?.length) {
     rows = hotel.rooms.map(room => ({
-      id:          `room_custom_${room._id}`,
-      title:       `${room.name} — ₹${room.price?.toLocaleString()}/night`,
-      description: room.description || `${room.availableRooms || 0} rooms available`
-    }));
+  id: `room_custom_${room._id}`,
+  title: room.name.substring(0, 24), // ✅ FIX
+  description: `₹${room.price?.toLocaleString()}/night`
+}));
   } else {
     // Fallback default rooms
     rows = [
