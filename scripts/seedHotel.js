@@ -52,7 +52,7 @@ LOCATION:
 - Free pickup available
 
 CONTACT:
-- Phone: +91 98765 43210
+- Phone: +91 9234726897
 - Email: info@innhance.com
 - Front desk: 24/7
 
@@ -87,14 +87,16 @@ async function seed() {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('MongoDB connected ✅');
 
-    await Hotel.deleteOne({ email: 'admin@innhance.com' });
+    // await Hotel.deleteOne({ email: 'admin@innhance.com' });
 
     const hotel = await Hotel.create({
       name: 'Innhance Hotels',
       email: 'admin@innhance.com',
       password: 'hashed_later',
-      whatsappNumber: '+1 555 174 2481',
-      whatsappPhoneNumberId: '1030286350168358',
+      // whatsappNumber: '+1 555 174 2481',
+      whatsappNumber: '+1 555 646 1664',
+      // whatsappPhoneNumberId: '1030286350168358',
+      whatsappPhoneNumberId: '1107267635800971',
       botConfig: {
         assistantName: 'Inna',
         systemPrompt: systemPrompt

@@ -497,6 +497,7 @@ Rules:
 // ============================================================
 // DATABASE FUNCTIONS
 // ============================================================
+
 async function saveMessage(phone, hotelId, customerId, role, content) {
   try {
     const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -507,7 +508,7 @@ async function saveMessage(phone, hotelId, customerId, role, content) {
           phone, hotelId,
           name:   'Guest ' + String(phone).slice(-4),
           avatar: 'G',
-          unread: 0,
+          // unread: 0,
         },
         $set: {
           customerId,
