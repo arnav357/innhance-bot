@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'innhance_crm_secret_2026';
 
+
 // ============================================================
 // Login — checks users in innhance-crm database
 // ============================================================
@@ -27,7 +28,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = password === user.password;
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
