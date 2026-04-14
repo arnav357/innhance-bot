@@ -6,7 +6,8 @@ const Hotel = require("../models/Hotel");
 const Customer = require("../models/Customer");
 
 // ===== CREATE BOOKING =====
-router.post("/create", async (req, res) => {
+
+router.post("/create", verifyToken, async (req, res) => {
   try {
     const {
       guestName,
@@ -18,14 +19,15 @@ router.post("/create", async (req, res) => {
       totalAmount
     } = req.body;
 
-    // 🔥 1. Hotel find
-    const hotel = await Hotel.findOne();
+    // ✅ Get correct hotel from token
+    const hotel = await Hotel.findById(req.user.hotelId);
+
     if (!hotel) {
-      return res.status(400).json({ error: "Hotel not found" });
+      return res.status(404).json({ error: "Hotel not found" });
     }
 
-    // 🔥 2. Customer find or create
-    let customer = await Customer.findOne({ phone });
+    // ✅ Find or create customer (scoped to hotel)
+    let customer = await Customer.findOne({ phone, hotelId: hotel._id });
 
     if (!customer) {
       customer = await Customer.create({
@@ -34,7 +36,7 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    // 🔥 3. Create booking
+    // ✅ Create booking linked to hotel
     const booking = await Booking.create({
       hotelId: hotel._id,
       customerId: customer._id,
@@ -48,15 +50,6 @@ router.post("/create", async (req, res) => {
       status: "pending"
     });
 
-    console.log("Booking:", {
-      id: booking._id,
-      name: booking.guestName,
-      phone: booking.phone,
-      room: booking.roomType,
-      amount: booking.totalAmount,
-      status: booking.status
-    });
-
     return res.json({ booking });
 
   } catch (err) {
@@ -65,10 +58,15 @@ router.post("/create", async (req, res) => {
   }
 });
 
-router.get("/all", async (req, res) => {
+
+router.get("/all", verifyToken, async (req, res) => {
   try {
-    const bookings = await Booking.find().sort({ createdAt: -1 });
+    const bookings = await Booking.find({
+      hotelId: req.user.hotelId   // ✅ filter by hotel
+    }).sort({ createdAt: -1 });
+
     res.json({ bookings });
+
   } catch (err) {
     console.error("Fetch bookings error:", err.message);
     res.status(500).json({ error: "Failed to fetch bookings" });
@@ -76,26 +74,24 @@ router.get("/all", async (req, res) => {
 });
 
 // ===== CANCEL PAY AT DESK BOOKING =====
-router.patch("/cancel-pay-at-desk/:id", async (req, res) => {
+router.patch("/cancel-pay-at-desk/:id", verifyToken, async (req, res) => {
   try {
     const bookingId = req.params.id;
 
-    // Database mein booking find karo aur status update karo
-    const updatedBooking = await Booking.findByIdAndUpdate(
-      bookingId,
-      { status: "cancelled" }, 
-      { new: true } // Ye naya updated document return karega
+    // ✅ Only update booking belonging to this hotel
+    const updatedBooking = await Booking.findOneAndUpdate(
+      { _id: bookingId, hotelId: req.user.hotelId },
+      { status: "cancelled" },
+      { new: true }
     );
 
     if (!updatedBooking) {
       return res.status(404).json({ error: "Booking not found" });
     }
 
-    console.log("Cancelled Booking:", updatedBooking._id);
-    
-    return res.json({ 
-        message: "Pay at desk booking cancelled successfully", 
-        booking: updatedBooking 
+    return res.json({
+      message: "Booking cancelled successfully",
+      booking: updatedBooking
     });
 
   } catch (err) {
