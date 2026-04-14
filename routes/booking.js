@@ -4,6 +4,7 @@ const router = express.Router();
 const Booking = require("../models/Booking");
 const Hotel = require("../models/Hotel");
 const Customer = require("../models/Customer");
+const verifyToken = require("../middleware/authMiddleware"); // Middleware to protect routes (optional for now)
 
 // ===== CREATE BOOKING =====
 
