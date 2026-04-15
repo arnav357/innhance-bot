@@ -16,6 +16,7 @@ const messageSchema = new mongoose.Schema({
   }
 });
 
+
 // Schema for the entire conversation
 const chatSchema = new mongoose.Schema({
   name: { type: String, default: 'New Customer' },
@@ -25,9 +26,19 @@ const chatSchema = new mongoose.Schema({
   lastMessage: { type: String, default: '' },
   time: { type: String, default: 'Just now' }, // e.g., "2 min ago" or "10:05 AM"
   unread: { type: Number, default: 0 },
-  status: { type: String, enum: ['booked', 'inquiry', 'cancelled'], default: 'inquiry' },
+  status: { type: String, enum: ['inquiry', 'booking_in_progress', 'booked', 'cancelled'], default: 'inquiry' },
   avatar: { type: String, default: 'U' },
-  messages: [messageSchema]
+  messages: [messageSchema],
+  bookingFlow: {
+  step: { type: String, default: null },
+  data: {
+    name: String,
+    checkIn: Date,
+    checkOut: Date,
+    guests: Number,
+    roomType: String
+  }
+}
 }, { timestamps: true });
 
 // One chat thread per phone per hotel.
