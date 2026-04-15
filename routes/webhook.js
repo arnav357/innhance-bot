@@ -1407,9 +1407,32 @@ _Ref: ${payment?.transactionNote || ""}_`;
         status: "confirmed",
       }).sort({ createdAt: -1 });
 
+      
       if (booking) {
         // booking.status = "confirmed";
         // await booking.save();
+
+        const existingPayment = await Payment.findOne({
+          bookingId: booking._id
+        });
+
+      if (!existingPayment) {
+        const bookingRef = booking._id.toString().slice(-6).toUpperCase();
+
+        await Payment.create({
+          hotelId: hotel._id,
+          hotelName: hotel.name,
+          bookingId: booking._id,
+          bookingRef,
+          customerPhone,
+          guestName: booking.guestName,
+          amount: booking.totalAmount,
+          transactionNote: `HOTEL-${hotel.shortCode}-BOOK-${bookingRef}`,
+
+          // 🔥 KEY DIFFERENCE
+          status: "pending"
+        });
+      }
 
         await Chat.findOneAndUpdate(
           { phone: customerPhone, hotelId: hotel._id },
