@@ -717,6 +717,28 @@ async function isFirstMessage(phone, hotelId) {
   }
 }
 
+
+function parseDate(input) {
+  const parts = input.split('/');
+
+  if (parts.length !== 3) return null;
+
+  const [day, month, year] = parts.map(Number);
+
+  const date = new Date(year, month - 1, day);
+
+  // Validate correct date (avoid 32/13/2026 etc)
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
 // ============================================================
 // CORE AI FUNCTION
 // ============================================================
@@ -1159,7 +1181,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
       // STEP 2: CHECK-IN
       if (flow.step === "ask_checkin") {
-        const checkIn = new Date(userMessage);
+        const checkIn = new parseDate(userMessage);
 
         if (isNaN(checkIn)) {
           await sendText(
@@ -1187,7 +1209,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
       // STEP 3: CHECK-OUT
       if (flow.step === "ask_checkout") {
-        const checkOut = new Date(userMessage);
+        const checkOut = new parseDate(userMessage);
 
         if (isNaN(checkOut) || checkOut <= flow.data.checkIn) {
           await sendText(
