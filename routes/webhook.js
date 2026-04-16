@@ -180,10 +180,12 @@ function normalizePhone(phone) {
   return p;
 }
 
-function buildUpiLink(amount, transactionNote) {
-  const pa = encodeURIComponent(PLATFORM_UPI_ID);
-  const pn = encodeURIComponent(PLATFORM_UPI_NAME);
+
+function buildUpiLink(amount, transactionNote, upiId, upiName) {
+  const pa = encodeURIComponent(upiId);
+  const pn = encodeURIComponent(upiName);
   const tn = encodeURIComponent(transactionNote);
+
   return `upi://pay?pa=${pa}&pn=${pn}&am=${amount.toFixed(2)}&cu=INR&tn=${tn}&mc=0000`;
 }
 
@@ -483,6 +485,7 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
   );
 }
 
+
 // ============================================================
 // DYNAMIC UPI QR GENERATOR
 // ============================================================
@@ -492,7 +495,9 @@ async function sendPaymentQR(to, phoneNumberId, token, booking, hotel) {
     const hotelCode =
       hotel.shortCode || hotel._id.toString().slice(-6).toUpperCase();
     const transactionNote = buildTransactionNote(hotelCode, bookingRef);
-    const upiLink = buildUpiLink(booking.totalAmount, transactionNote);
+    const upiId=hotel.upiId || "prabhakararnav28@ptaxis";
+    const upiName=hotel.upiName || "Arnav Prabhakar";
+    const upiLink = buildUpiLink(booking.totalAmount, transactionNote,upiId,upiName);
 
     const qrBuffer = await QRCode.toBuffer(upiLink, { width: 400, margin: 2 });
 
@@ -1748,6 +1753,8 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       });
 
       // ✅ Send QR
+      const upiId=hotel.upiId;
+      const upiName=hotel.upiName;
       await sendPaymentQR(customerPhone, phoneNumberId, token, booking, hotel);
 
       await saveMessage(

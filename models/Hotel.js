@@ -15,6 +15,7 @@ const hotelSchema = new mongoose.Schema({
     systemPrompt:  { type: String, required: true },
   },
 
+  
   rooms: [
     {
       name:           { type: String },
@@ -32,7 +33,8 @@ const hotelSchema = new mongoose.Schema({
       ]
     }
   ],
-
+  upiId: { type: String },        // e.g. hotel@upi
+  upiName: { type: String },      // receiver name
   images: {
     lobby:       { type: String },
     standardRoom: { type: String },
