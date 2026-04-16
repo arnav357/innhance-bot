@@ -92,7 +92,8 @@ function generateFolderName(name) {
     .replace(/^-|-$/g, "");       // trim edges
 }
 
-router.post("/upload-room-image", upload.single("image"), async (req, res) => {
+
+router.post("/upload-room-image",verifyToken, upload.single("image"), async (req, res) => {
   try {
     const hotel = await Hotel.findById(req.user.hotelId);
     if (!hotel) {
@@ -110,7 +111,7 @@ router.post("/upload-room-image", upload.single("image"), async (req, res) => {
       }
     );
     console.log("✅ Uploaded image to Cloudinary:", result.secure_url);
-    
+
 
     res.json({
       success: true,
