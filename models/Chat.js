@@ -38,7 +38,12 @@ const chatSchema = new mongoose.Schema({
     guests: Number,
     roomType: String
   }
-}
+  },
+  mode: {
+    type: String,
+    enum: ["bot", "human"],
+    default: "bot",
+  },
 }, { timestamps: true });
 
 // One chat thread per phone per hotel.

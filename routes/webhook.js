@@ -180,7 +180,6 @@ function normalizePhone(phone) {
   return p;
 }
 
-
 function buildUpiLink(amount, transactionNote, upiId, upiName) {
   const pa = encodeURIComponent(upiId);
   const pn = encodeURIComponent(upiName);
@@ -360,20 +359,25 @@ async function sendMainMenu(to, phoneNumberId, token, hotel) {
             title: "🏨 Rooms & Photos",
             description: "See all rooms with prices",
           },
+          // {
+          //   id: "menu_offers",
+          //   title: "🎁 Special Offers",
+          //   description: "Deals & discounts available",
+          // },
+          // {
+          //   id: "menu_checkin",
+          //   title: "⏰ Timings & Policy",
+          //   description: "Check-in, check-out & more",
+          // },
+          // {
+          //   id: "menu_contact",
+          //   title: "📞 Contact Us",
+          //   description: "Reach our team directly",
+          // },
           {
-            id: "menu_offers",
-            title: "🎁 Special Offers",
-            description: "Deals & discounts available",
-          },
-          {
-            id: "menu_checkin",
-            title: "⏰ Timings & Policy",
-            description: "Check-in, check-out & more",
-          },
-          {
-            id: "menu_contact",
-            title: "📞 Contact Us",
-            description: "Reach our team directly",
+            id: "talk_human",
+            title: "👤 Talk to Human",
+            description: "Chat with our team directly",
           },
         ],
       },
@@ -434,28 +438,26 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
     token,
   );
 
-
-  
   if (hotel.rooms?.length) {
     for (const room of hotel.rooms) {
-  const images = room.images?.length
-    ? room.images.slice(0, 2) // limit to 2 images
-    : [FALLBACK_IMAGES.deluxe];
+      const images = room.images?.length
+        ? room.images.slice(0, 2) // limit to 2 images
+        : [FALLBACK_IMAGES.deluxe];
 
-  const amenityText = room.amenities?.length
-    ? room.amenities.slice(0, 3).join(" • ")
-    : "Contact hotel for amenities";
+      const amenityText = room.amenities?.length
+        ? room.amenities.slice(0, 3).join(" • ")
+        : "Contact hotel for amenities";
 
-  for (const img of images) {
-    await sendImage(
-      to,
-      img,
-      `🛏️ *${room.name}* — ₹${room.price?.toLocaleString()}/night\n${amenityText} ✅`,
-      phoneNumberId,
-      token
-    );
-  }
-}
+      for (const img of images) {
+        await sendImage(
+          to,
+          img,
+          `🛏️ *${room.name}* — ₹${room.price?.toLocaleString()}/night\n${amenityText} ✅`,
+          phoneNumberId,
+          token,
+        );
+      }
+    }
   } else {
     // Fallback
     await sendImage(
@@ -493,7 +495,6 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
   );
 }
 
-
 // ============================================================
 // DYNAMIC UPI QR GENERATOR
 // ============================================================
@@ -503,9 +504,14 @@ async function sendPaymentQR(to, phoneNumberId, token, booking, hotel) {
     const hotelCode =
       hotel.shortCode || hotel._id.toString().slice(-6).toUpperCase();
     const transactionNote = buildTransactionNote(hotelCode, bookingRef);
-    const upiId=hotel.upiId || "prabhakararnav28@ptaxis";
-    const upiName=hotel.upiName || "Arnav Prabhakar";
-    const upiLink = buildUpiLink(booking.totalAmount, transactionNote,upiId,upiName);
+    const upiId = hotel.upiId || "prabhakararnav28@ptaxis";
+    const upiName = hotel.upiName || "Arnav Prabhakar";
+    const upiLink = buildUpiLink(
+      booking.totalAmount,
+      transactionNote,
+      upiId,
+      upiName,
+    );
 
     const qrBuffer = await QRCode.toBuffer(upiLink, { width: 400, margin: 2 });
 
@@ -599,7 +605,12 @@ async function fetchWhatsAppMedia(mediaId, token) {
 // ============================================================
 // VERIFY PAYMENT SCREENSHOT WITH GPT-4o VISION
 // ============================================================
-async function verifyPaymentScreenshot(base64Image, mimeType, expectedAmount) {
+async function verifyPaymentScreenshot(
+  base64Image,
+  mimeType,
+  expectedAmount,
+  hotel,
+) {
   try {
     const prompt = `You are a payment verification assistant. Examine this UPI payment screenshot carefully.
 
@@ -643,10 +654,10 @@ Rules:
       .trim()
       .replace(/```json|```/g, "");
     const data = JSON.parse(raw);
-
+    const expectedName = hotel.upiName || PLATFORM_UPI_NAME;
     const nameMatch = data.receiverName
       ?.toLowerCase()
-      .includes(PLATFORM_UPI_NAME.toLowerCase());
+      .includes(expectedName.toLowerCase());
     const amountMatch = Math.abs(data.amountPaid - expectedAmount) <= 1;
     const isSuccess = data.isSuccessful === true;
 
@@ -730,9 +741,8 @@ async function isFirstMessage(phone, hotelId) {
   }
 }
 
-
 function parseDate(input) {
-  const parts = input.split('/');
+  const parts = input.split("/");
 
   if (parts.length !== 3) return null;
 
@@ -980,6 +990,39 @@ router.post("/", async (req, res) => {
       { upsert: true, new: true },
     );
 
+    const chat = await Chat.findOne({
+      phone: customerPhone,
+      hotelId: hotel._id,
+    });
+
+    if (chat?.mode === "human") {
+      console.log("👤 Human mode active — skipping bot");
+
+      const incomingText =
+        message.text?.body ||
+        message.interactive?.button_reply?.title ||
+        message.interactive?.list_reply?.title ||
+        "interaction";
+
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "user",
+        "[User]: " + incomingText,
+      );
+
+      // 🔘 Always show "Back to Bot" option
+      await sendButtons(
+        customerPhone,
+        "👤 You're chatting with our team.",
+        [{ id: "back_to_bot", title: "🤖 Back to Bot" }],
+        phoneNumberId,
+        token,
+      );
+      return;
+    }
+
     const normalizedPhone = normalizePhone(customerPhone);
 
     // ══════════════════════════════════════════════════════════
@@ -1039,6 +1082,7 @@ router.post("/", async (req, res) => {
         media.base64,
         media.mimeType,
         payment.amount,
+        hotel,
       );
       console.log("💳 Verification result:", JSON.stringify(result));
 
@@ -1048,7 +1092,7 @@ router.post("/", async (req, res) => {
           customerPhone,
           "Payment already verified for this booking 😊",
           phoneNumberId,
-          token
+          token,
         );
         return;
       }
@@ -1113,7 +1157,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
           failReason =
             "The screenshot doesn't show a successful payment. Please make sure payment went through and send the success screenshot. 🙏";
         else if (!result.nameMatch)
-          failReason = `Payment receiver name doesn't match. Please pay to *${PLATFORM_UPI_NAME}* and send screenshot again. 🙏`;
+          failReason = `Payment receiver name doesn't match. Please pay to *${hotel.upiName}* and send screenshot again. 🙏`;
         else if (!result.amountMatch)
           failReason = `Amount on screenshot (₹${result.extracted?.amountPaid}) doesn't match booking total ₹${result.expectedAmount}. Please check and send correct screenshot. 🙏`;
 
@@ -1162,16 +1206,70 @@ _Ref: ${payment?.transactionNote || ""}_`;
       }
     }
 
+    if (interactiveId === "talk_human") {
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        { mode: "human" },
+        { upsert: true },
+      );
+
+      await sendText(
+        customerPhone,
+        "👤 You're now connected to our team. Someone will reply shortly 😊",
+        phoneNumberId,
+        token,
+      );
+
+      return;
+    }
+
+    if (interactiveId === "back_to_bot") {
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        { mode: "bot" },
+      );
+
+      await sendText(
+        customerPhone,
+        "🤖 I'm back! How can I help you? 😊",
+        phoneNumberId,
+        token,
+      );
+
+      return;
+    }
+
     if (!userMessage) return;
 
     console.log(
       `📩 [${hotel.name}] [${customerPhone}] "${userMessage}" | id: "${interactiveId}"`,
     );
 
-    const chat = await Chat.findOne({
-      phone: customerPhone,
-      hotelId: hotel._id,
-    });
+    if (
+      /human|agent|real person|baat karni|insaan|customer care/i.test(
+        userMessage,
+      )
+    ) {
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        { mode: "human" },
+        { upsert: true },
+      );
+
+      await sendText(
+        customerPhone,
+        "👤 Connecting you to our team... Please wait 😊",
+        phoneNumberId,
+        token,
+      );
+
+      return; // 🚨 VERY IMPORTANT
+    }
+
+    // const chat = await Chat.findOne({
+    //   phone: customerPhone,
+    //   hotelId: hotel._id,
+    // });
 
     if (chat?.bookingFlow?.step) {
       const flow = chat.bookingFlow;
@@ -1420,32 +1518,31 @@ _Ref: ${payment?.transactionNote || ""}_`;
         status: "confirmed",
       }).sort({ createdAt: -1 });
 
-      
       if (booking) {
         // booking.status = "confirmed";
         // await booking.save();
 
         const existingPayment = await Payment.findOne({
-          bookingId: booking._id
-        });
-
-      if (!existingPayment) {
-        const bookingRef = booking._id.toString().slice(-6).toUpperCase();
-
-        await Payment.create({
-          hotelId: hotel._id,
-          hotelName: hotel.name,
           bookingId: booking._id,
-          bookingRef,
-          customerPhone,
-          guestName: booking.guestName,
-          amount: booking.totalAmount,
-          transactionNote: `HOTEL-${hotel.shortCode}-BOOK-${bookingRef}`,
-
-          // 🔥 KEY DIFFERENCE
-          status: "pending"
         });
-      }
+
+        if (!existingPayment) {
+          const bookingRef = booking._id.toString().slice(-6).toUpperCase();
+
+          await Payment.create({
+            hotelId: hotel._id,
+            hotelName: hotel.name,
+            bookingId: booking._id,
+            bookingRef,
+            customerPhone,
+            guestName: booking.guestName,
+            amount: booking.totalAmount,
+            transactionNote: `HOTEL-${hotel.shortCode}-BOOK-${bookingRef}`,
+
+            // 🔥 KEY DIFFERENCE
+            status: "pending",
+          });
+        }
 
         await Chat.findOneAndUpdate(
           { phone: customerPhone, hotelId: hotel._id },
@@ -1612,6 +1709,15 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         ? `${roomConfig.name} (₹${roomConfig.price?.toLocaleString()}/night)`
         : "selected room";
 
+      if (!roomConfig) {
+        await sendText(
+          customerPhone,
+          "Sorry, this room is not available 😔",
+          phoneNumberId,
+          token,
+        );
+        return;
+      }
       await Chat.findOneAndUpdate(
         { phone: customerPhone, hotelId: hotel._id },
         {
@@ -1761,8 +1867,8 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       });
 
       // ✅ Send QR
-      const upiId=hotel.upiId;
-      const upiName=hotel.upiName;
+      const upiId = hotel.upiId;
+      const upiName = hotel.upiName;
       await sendPaymentQR(customerPhone, phoneNumberId, token, booking, hotel);
 
       await saveMessage(
@@ -1787,6 +1893,19 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       hotel,
     );
     await sendText(customerPhone, reply, phoneNumberId, token);
+
+    if (Math.random() < 0.5) {
+      await sendButtons(
+        customerPhone,
+        "Need more help?",
+        [
+          { id: "talk_human", title: "👤 Talk to Human" },
+          { id: "stay_bot", title: "🤖 Continue with Bot" },
+        ],
+        phoneNumberId,
+        token,
+      );
+    }
 
     // Try to extract booking in background
     // const history = await getHistory(customerPhone, hotel._id);
