@@ -995,67 +995,6 @@ router.post("/", async (req, res) => {
       hotelId: hotel._id,
     });
 
-        if (interactiveId === "talk_human") {
-      await Chat.findOneAndUpdate(
-        { phone: customerPhone, hotelId: hotel._id },
-        { mode: "human" },
-        { upsert: true }
-      );
-
-      await sendText(
-        customerPhone,
-        "👤 You're now connected to our team. Someone will reply shortly 😊",
-        phoneNumberId,
-        token
-      );
-
-      return;
-    }
-
-    if (interactiveId === "back_to_bot") {
-      await Chat.findOneAndUpdate(
-        { phone: customerPhone, hotelId: hotel._id },
-        { mode: "bot" }
-      );
-
-      await sendText(
-        customerPhone,
-        "🤖 I'm back! How can I help you? 😊",
-        phoneNumberId,
-        token
-      );
-
-      return;
-    }
-
-    if (chat?.mode === "human") {
-      console.log("👤 Human mode active — skipping bot");
-
-      const incomingText =
-        message.text?.body ||
-        message.interactive?.button_reply?.title ||
-        message.interactive?.list_reply?.title ||
-        "interaction";
-
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        "[User]: " + incomingText,
-      );
-
-      // 🔘 Always show "Back to Bot" option
-      await sendButtons(
-        customerPhone,
-        "👤 You're chatting with our team.",
-        [{ id: "back_to_bot", title: "🤖 Back to Bot" }],
-        phoneNumberId,
-        token,
-      );
-      return;
-    }
-
     const normalizedPhone = normalizePhone(customerPhone);
 
     // ══════════════════════════════════════════════════════════
@@ -1237,6 +1176,67 @@ _Ref: ${payment?.transactionNote || ""}_`;
         interactiveId = message.interactive.list_reply.id;
         userMessage = message.interactive.list_reply.title;
       }
+    }
+
+    if (interactiveId === "talk_human") {
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        { mode: "human" },
+        { upsert: true },
+      );
+
+      await sendText(
+        customerPhone,
+        "👤 You're now connected to our team. Someone will reply shortly 😊",
+        phoneNumberId,
+        token,
+      );
+
+      return;
+    }
+
+    if (interactiveId === "back_to_bot") {
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        { mode: "bot" },
+      );
+
+      await sendText(
+        customerPhone,
+        "🤖 I'm back! How can I help you? 😊",
+        phoneNumberId,
+        token,
+      );
+
+      return;
+    }
+
+    if (chat?.mode === "human") {
+      console.log("👤 Human mode active — skipping bot");
+
+      const incomingText =
+        message.text?.body ||
+        message.interactive?.button_reply?.title ||
+        message.interactive?.list_reply?.title ||
+        "interaction";
+
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "user",
+        "[User]: " + incomingText,
+      );
+
+      // 🔘 Always show "Back to Bot" option
+      await sendButtons(
+        customerPhone,
+        "👤 You're chatting with our team.",
+        [{ id: "back_to_bot", title: "🤖 Back to Bot" }],
+        phoneNumberId,
+        token,
+      );
+      return;
     }
 
     if (!userMessage) return;
