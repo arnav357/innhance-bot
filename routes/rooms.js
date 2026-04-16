@@ -80,4 +80,48 @@ router.delete("/:roomId",verifyToken, async (req, res) => {
   }
 });
 
+
+const upload = require("../middleware/upload");
+const cloudinary = require("../config/cloudinary");
+
+function generateFolderName(name) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "-")   // remove special chars
+    .replace(/-+/g, "-")          // avoid multiple dashes
+    .replace(/^-|-$/g, "");       // trim edges
+}
+
+router.post("/upload-room-image", upload.single("image"), async (req, res) => {
+  try {
+    const hotel = await Hotel.findById(req.user.hotelId);
+    if (!hotel) {
+      return res.status(404).json({ error: "Hotel not found" });
+    }
+
+    const folderName = generateFolderName(hotel.name);
+
+    const base64 = req.file.buffer.toString("base64");
+
+    const result = await cloudinary.uploader.upload(
+      `data:${req.file.mimetype};base64,${base64}`,
+      {
+        folder: `hotel_rooms/${folderName}`, // 🔥 KEY LINE
+      }
+    );
+    console.log("✅ Uploaded image to Cloudinary:", result.secure_url);
+    
+
+    res.json({
+      success: true,
+      url: result.secure_url,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Upload failed" });
+  }
+});
+
+
 module.exports = router;
