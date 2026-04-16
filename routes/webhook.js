@@ -434,26 +434,33 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
     token,
   );
 
+
   
   if (hotel.rooms?.length) {
     for (const room of hotel.rooms) {
   const images = room.images?.length
-    ? room.images.slice(0, 2) // limit to 2 images
+    ? room.images.slice(0, 2)
     : [FALLBACK_IMAGES.deluxe];
 
   const amenityText = room.amenities?.length
     ? room.amenities.slice(0, 3).join(" • ")
     : "Contact hotel for amenities";
 
+  // 👉 Send room header FIRST (important UX)
+  await sendText(
+    to,
+    `🏨 *${room.name}* — ₹${room.price?.toLocaleString()}/night\n${amenityText} ✅`,
+    phoneNumberId,
+    token
+  );
+
+  await delay(300); // 🔥 important
+
   for (const img of images) {
-    await sendImage(
-      to,
-      img,
-      `🛏️ *${room.name}* — ₹${room.price?.toLocaleString()}/night\n${amenityText} ✅`,
-      phoneNumberId,
-      token
-    );
+    await sendImage(to, img, "", phoneNumberId, token);
+    await delay(500); // 🔥 ensures order
   }
+
 }
   } else {
     // Fallback
