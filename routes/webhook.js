@@ -995,6 +995,39 @@ router.post("/", async (req, res) => {
       hotelId: hotel._id,
     });
 
+        if (interactiveId === "talk_human") {
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        { mode: "human" },
+        { upsert: true }
+      );
+
+      await sendText(
+        customerPhone,
+        "👤 You're now connected to our team. Someone will reply shortly 😊",
+        phoneNumberId,
+        token
+      );
+
+      return;
+    }
+
+    if (interactiveId === "back_to_bot") {
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        { mode: "bot" }
+      );
+
+      await sendText(
+        customerPhone,
+        "🤖 I'm back! How can I help you? 😊",
+        phoneNumberId,
+        token
+      );
+
+      return;
+    }
+
     if (chat?.mode === "human") {
       console.log("👤 Human mode active — skipping bot");
 
@@ -1204,39 +1237,6 @@ _Ref: ${payment?.transactionNote || ""}_`;
         interactiveId = message.interactive.list_reply.id;
         userMessage = message.interactive.list_reply.title;
       }
-    }
-
-    if (interactiveId === "talk_human") {
-      await Chat.findOneAndUpdate(
-        { phone: customerPhone, hotelId: hotel._id },
-        { mode: "human" },
-        { upsert: true },
-      );
-
-      await sendText(
-        customerPhone,
-        "👤 You're now connected to our team. Someone will reply shortly 😊",
-        phoneNumberId,
-        token,
-      );
-
-      return;
-    }
-
-    if (interactiveId === "back_to_bot") {
-      await Chat.findOneAndUpdate(
-        { phone: customerPhone, hotelId: hotel._id },
-        { mode: "bot" },
-      );
-
-      await sendText(
-        customerPhone,
-        "🤖 I'm back! How can I help you? 😊",
-        phoneNumberId,
-        token,
-      );
-
-      return;
     }
 
     if (!userMessage) return;
