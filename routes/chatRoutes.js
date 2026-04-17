@@ -7,7 +7,7 @@ const verifyToken = require("../middleware/authMiddleware");
 // const {sendImage,sendVideo,sendText,saveMessage}=require("../routes/webhook");
 const multer = require("multer");
 const  uploadToCloudinary  = require("../config/cloudinary")
-const upload = multer({ dest: "uploads/" });
+const upload = require("../middleware/upload");
 // const token=process.env.WHATSAPP_TOKEN;
 
 async function saveMessage(phone, hotelId, customerId, role, content) {

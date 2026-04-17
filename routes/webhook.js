@@ -12,6 +12,7 @@ const Booking = require("../models/Booking");
 const Payment = require("../models/Payment");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const sendHumanAlertEmail=require("../config/mail");
 
 // ============================================================
 // PLATFORM PAYMENT CONFIG
@@ -1234,7 +1235,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         phoneNumberId,
         token,
       );
-
+      await sendHumanAlertEmail(hotel, customerPhone);
 
       return;
     }
