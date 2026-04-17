@@ -9,7 +9,22 @@ const verifyToken = require("../middleware/authMiddleware");
 const multer = require("multer");
 const  cloudinary  = require("../config/cloudinary")
 const upload = require("../middleware/upload");
+const streamifier = require("streamifier");
 // const token=process.env.WHATSAPP_TOKEN;
+
+function uploadFromBuffer(buffer) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: "auto" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+
+    streamifier.createReadStream(buffer).pipe(stream);
+  });
+}
 
 async function saveMessage(phone, hotelId, customerId, role, content) {
   try {
@@ -261,10 +276,7 @@ router.post(
 
       // MEDIA
       else {
-        const result = await cloudinary.uploader.upload(
-          req.file.path,
-          { resource_type: "auto" }
-        );
+        const result = await uploadFromBuffer(req.file.buffer);
 
         const mediaUrl = result.secure_url;
 
