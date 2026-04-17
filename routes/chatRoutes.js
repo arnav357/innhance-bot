@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const Chat = require('../models/Chat'); // Import the model we just created
-const verifyToken = require("../middleware/authMiddleware"); // Middleware to protect routes (optional for now)
+const verifyToken = require("../middleware/authMiddleware"); 
+const {sendImage,sendVideo,sendText,saveMessage}=require("../routes/webhook");
+const multer = require("multer");
+const  uploadToCloudinary  = require("../config/cloudinary")
+const upload = multer({ dest: "uploads/" });
 
 // 1. Get all chats from Database
 router.get('/', verifyToken, async (req, res) => {
@@ -64,5 +68,134 @@ router.post('/mark-all-read', verifyToken, async (req, res) => {
     res.status(500).json({ error: "Failed to update all chats" });
   }
 });
+
+/* =========================================================
+4. SWITCH MODE
+POST /:id/mode
+body: { mode: "human" | "bot" }
+========================================================= */
+router.post("/:id/mode", verifyToken, async (req, res) => {
+  try {
+    const { mode } = req.body;
+
+    if (!["human", "bot"].includes(mode)) {
+      return res.status(400).json({
+        error: "Invalid mode"
+      });
+    }
+
+    const chat = await Chat.findByIdAndUpdate(
+      req.params.id,
+      { mode },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      mode: chat.mode
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// 5. MANUAL REPLY
+// POST /manual-reply
+// multipart/form-data
+
+// fields:
+// chatId
+// message
+// file(optional)
+
+router.post(
+  "/manual-reply",
+  verifyToken,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      const { chatId, message } = req.body;
+
+      const chat = await Chat.findById(chatId);
+      if (!chat) {
+        return res.status(404).json({
+          error: "Chat not found"
+        });
+      }
+
+      const hotel = await Hotel.findById(chat.hotelId);
+      if (!hotel) {
+        return res.status(404).json({
+          error: "Hotel not found"
+        });
+      }
+
+      const phoneNumberId = hotel.whatsappPhoneNumberId;
+      const token = hotel.whatsappToken;
+
+      let savedContent = message || "";
+
+      // TEXT ONLY
+      if (!req.file) {
+        await sendText(
+          chat.phone,
+          message,
+          phoneNumberId,
+          token
+        );
+      }
+
+      // FILE EXISTS
+      else {
+        const mediaUrl = await uploadToCloudinary(req.file.path);
+
+        // IMAGE
+        if (req.file.mimetype.startsWith("image")) {
+          await sendImage(
+            chat.phone,
+            mediaUrl,
+            message || "",
+            phoneNumberId,
+            token
+          );
+
+          savedContent =
+            message || "[Sent Image]";
+        }
+
+        // VIDEO
+        else if (req.file.mimetype.startsWith("video")) {
+          await sendVideo(
+            chat.phone,
+            mediaUrl,
+            message || "",
+            phoneNumberId,
+            token
+          );
+
+          savedContent =
+            message || "[Sent Video]";
+        }
+      }
+
+      await saveMessage(
+        chat.phone,
+        hotel._id,
+        chat.customerId,
+        "assistant",
+        savedContent
+      );
+
+      res.json({
+        success: true
+      });
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
+      });
+    }
+  }
+);
 
 module.exports = router;

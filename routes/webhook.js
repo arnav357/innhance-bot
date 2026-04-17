@@ -281,6 +281,32 @@ async function sendImage(to, imageUrl, caption, phoneNumberId, token) {
   }
 }
 
+
+async function sendVideo(to, videoUrl, caption, phoneNumberId, token) {
+  try {
+    await axios.post(
+      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      {
+        messaging_product: "whatsapp",
+        to,
+        type: "video",
+        video: {
+          link: videoUrl,
+          caption,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (err) {
+    console.error("❌ sendVideo error:", err.response?.data || err.message);
+  }
+}
+
 async function sendButtons(to, bodyText, buttons, phoneNumberId, token) {
   try {
     await axios.post(
@@ -1156,7 +1182,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
     if (!["text", "interactive"].includes(message.type)) {
       await sendText(
         customerPhone,
-        "Sorry, I can only process text messages and images right now! 😊",
+        "Sorry, I can only process text, images and supported interactions",
         phoneNumberId,
         token,
       );
