@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Chat = require('../models/Chat'); // Import the model we just created
+const Hotel = require('../models/Hotel');
 const verifyToken = require("../middleware/authMiddleware"); 
 const {sendImage,sendVideo,sendText,saveMessage}=require("../routes/webhook");
 const multer = require("multer");
@@ -109,6 +110,7 @@ router.post("/:id/mode", verifyToken, async (req, res) => {
 // message
 // file(optional)
 
+
 router.post(
   "/manual-reply",
   verifyToken,
@@ -118,11 +120,13 @@ router.post(
       const { chatId, message } = req.body;
 
       const chat = await Chat.findById(chatId);
+      console.log("chat id in manual reply:",chatId);
       if (!chat) {
         return res.status(404).json({ error: "Chat not found" });
       }
 
       const hotel = await Hotel.findById(chat.hotelId);
+      console.log("hotel id in manual reply:",hotel._id);
       if (!hotel) {
         return res.status(404).json({ error: "Hotel not found" });
       }
