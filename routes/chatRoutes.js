@@ -5,8 +5,9 @@ const Chat = require('../models/Chat'); // Import the model we just created
 const Hotel = require('../models/Hotel');
 const verifyToken = require("../middleware/authMiddleware"); 
 // const {sendImage,sendVideo,sendText,saveMessage}=require("../routes/webhook");
+
 const multer = require("multer");
-const  uploadToCloudinary  = require("../config/cloudinary")
+const  cloudinary  = require("../config/cloudinary")
 const upload = require("../middleware/upload");
 // const token=process.env.WHATSAPP_TOKEN;
 
@@ -260,7 +261,12 @@ router.post(
 
       // MEDIA
       else {
-        const mediaUrl = await uploadToCloudinary(req.file.path);
+        const result = await cloudinary.uploader.upload(
+          req.file.path,
+          { resource_type: "auto" }
+        );
+
+        const mediaUrl = result.secure_url;
 
         if (req.file.mimetype.startsWith("image")) {
           await sendImage(
