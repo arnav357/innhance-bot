@@ -1205,10 +1205,27 @@ _Ref: ${payment?.transactionNote || ""}_`;
     }
 
     if (interactiveId === "talk_human") {
+
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "user",
+        "[User]: Talk to Human"
+      );
+
       await Chat.findOneAndUpdate(
         { phone: customerPhone, hotelId: hotel._id },
         { mode: "human" },
         { upsert: true },
+      );
+
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "👤 You're now connected to our team."
       );
 
       await sendText(
@@ -1218,13 +1235,30 @@ _Ref: ${payment?.transactionNote || ""}_`;
         token,
       );
 
+
       return;
     }
 
     if (interactiveId === "back_to_bot") {
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "user",
+        "[User]: Back to Bot"
+      );
+
       await Chat.findOneAndUpdate(
         { phone: customerPhone, hotelId: hotel._id },
         { mode: "bot" },
+      );
+
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "🤖 Bot resumed"
       );
 
       await sendText(

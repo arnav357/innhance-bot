@@ -119,69 +119,73 @@ router.post(
 
       const chat = await Chat.findById(chatId);
       if (!chat) {
-        return res.status(404).json({
-          error: "Chat not found"
-        });
+        return res.status(404).json({ error: "Chat not found" });
       }
 
       const hotel = await Hotel.findById(chat.hotelId);
       if (!hotel) {
-        return res.status(404).json({
-          error: "Hotel not found"
-        });
+        return res.status(404).json({ error: "Hotel not found" });
       }
 
+      const phone = String(chat.phone).trim();
       const phoneNumberId = hotel.whatsappPhoneNumberId;
       const token = hotel.whatsappToken;
 
-      let savedContent = message || "";
+      let savedContent = (message || "").trim();
 
       // TEXT ONLY
       if (!req.file) {
+        if (!savedContent) {
+          return res.status(400).json({
+            error: "Message required"
+          });
+        }
+
         await sendText(
-          chat.phone,
-          message,
+          phone,
+          savedContent,
           phoneNumberId,
           token
         );
       }
 
-      // FILE EXISTS
+      // MEDIA
       else {
         const mediaUrl = await uploadToCloudinary(req.file.path);
 
-        // IMAGE
         if (req.file.mimetype.startsWith("image")) {
           await sendImage(
-            chat.phone,
+            phone,
             mediaUrl,
-            message || "",
+            savedContent,
             phoneNumberId,
             token
           );
 
-          savedContent =
-            message || "[Sent Image]";
+          if (!savedContent) {
+            savedContent = "[Sent Image]";
+          }
         }
 
-        // VIDEO
         else if (req.file.mimetype.startsWith("video")) {
           await sendVideo(
-            chat.phone,
+            phone,
             mediaUrl,
-            message || "",
+            savedContent,
             phoneNumberId,
             token
           );
 
-          savedContent =
-            message || "[Sent Video]";
+          if (!savedContent) {
+            savedContent = "[Sent Video]";
+          }
         }
       }
 
+      // SAVE MESSAGE IN SAME CHAT
       await saveMessage(
-        chat.phone,
-        hotel._id,
+        phone,
+        chat.hotelId,   // IMPORTANT use chat.hotelId
         chat.customerId,
         "assistant",
         savedContent
@@ -190,7 +194,9 @@ router.post(
       res.json({
         success: true
       });
+
     } catch (err) {
+      console.error("manual-reply error:", err);
       res.status(500).json({
         error: err.message
       });
