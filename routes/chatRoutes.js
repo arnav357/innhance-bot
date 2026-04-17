@@ -1,12 +1,117 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 const Chat = require('../models/Chat'); // Import the model we just created
 const Hotel = require('../models/Hotel');
 const verifyToken = require("../middleware/authMiddleware"); 
-const {sendImage,sendVideo,sendText,saveMessage}=require("../routes/webhook");
+// const {sendImage,sendVideo,sendText,saveMessage}=require("../routes/webhook");
 const multer = require("multer");
 const  uploadToCloudinary  = require("../config/cloudinary")
 const upload = multer({ dest: "uploads/" });
+// const token=process.env.WHATSAPP_TOKEN;
+
+async function saveMessage(phone, hotelId, customerId, role, content) {
+  try {
+    const time = new Date().toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    await Chat.updateOne(
+      { phone, hotelId },
+      {
+        $setOnInsert: {
+          phone,
+          hotelId,
+          name: "Guest " + String(phone).slice(-4),
+          avatar: "G",
+          // unread: 0,
+        },
+        $set: {
+          customerId,
+          lastMessage: String(content).substring(0, 120),
+          time: "Just now",
+        },
+        $push: { messages: { role, content, time } },
+        ...(role === "user" ? { $inc: { unread: 1 } } : {}),
+      },
+      { upsert: true },
+    );
+  } catch (err) {
+    console.error("❌ saveMessage error:", err.message);
+  }
+}
+
+async function sendText(to, message, phoneNumberId, token) {
+  try {
+    await axios.post(
+      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      {
+        messaging_product: "whatsapp",
+        to,
+        type: "text",
+        text: { body: message },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  } catch (err) {
+    console.error("❌ sendText error:", err.response?.data || err.message);
+  }
+}
+
+async function sendImage(to, imageUrl, caption, phoneNumberId, token) {
+  try {
+    await axios.post(
+      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      {
+        messaging_product: "whatsapp",
+        to,
+        type: "image",
+        image: { link: imageUrl, caption },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  } catch (err) {
+    console.error("❌ sendImage error:", err.response?.data || err.message);
+  }
+}
+
+
+async function sendVideo(to, videoUrl, caption, phoneNumberId, token) {
+  try {
+    await axios.post(
+      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      {
+        messaging_product: "whatsapp",
+        to,
+        type: "video",
+        video: {
+          link: videoUrl,
+          caption,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (err) {
+    console.error("❌ sendVideo error:", err.response?.data || err.message);
+  }
+}
+
+
 
 // 1. Get all chats from Database
 router.get('/', verifyToken, async (req, res) => {
@@ -133,7 +238,7 @@ router.post(
 
       const phone = String(chat.phone).trim();
       const phoneNumberId = hotel.whatsappPhoneNumberId;
-      const token = hotel.whatsappToken;
+      const token = process.env.WHATSAPP_TOKEN;
 
       let savedContent = (message || "").trim();
 
