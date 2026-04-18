@@ -5,6 +5,7 @@ const Booking = require("../models/Booking");
 const Hotel = require("../models/Hotel");
 const Customer = require("../models/Customer");
 const verifyToken = require("../middleware/authMiddleware"); // Middleware to protect routes (optional for now)
+const Payment = require("../models/Payment");
 
 // ===== CREATE BOOKING =====
 
@@ -60,16 +61,30 @@ router.post("/create", verifyToken, async (req, res) => {
 });
 
 
+
 router.get("/all", verifyToken, async (req, res) => {
   try {
     const bookings = await Booking.find({
-      hotelId: req.user.hotelId   // ✅ filter by hotel
+      hotelId: req.user.hotelId
     }).sort({ createdAt: -1 });
 
-    res.json({ bookings });
+    const bookingsWithPayment = await Promise.all(
+      bookings.map(async (booking) => {
+        const payment = await Payment.findOne({
+          bookingId: booking._id
+        });
+
+        return {
+          ...booking.toObject(),
+          paymentStatus: payment ? payment.status : "unpaid"
+        };
+      })
+    );
+
+    res.json({ bookings: bookingsWithPayment });
 
   } catch (err) {
-    console.error("Fetch bookings error:", err.message);
+    console.error(err);
     res.status(500).json({ error: "Failed to fetch bookings" });
   }
 });
