@@ -116,5 +116,91 @@ router.patch("/cancel-pay-at-desk/:id", verifyToken, async (req, res) => {
   }
 });
 
+router.patch("/verify-payment/:bookingId", verifyToken, async (req, res) => {
+  try {
+    const booking = await Booking.findOne({
+      _id: req.params.bookingId,
+      hotelId: req.user.hotelId
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    let payment = await Payment.findOne({
+      bookingId: booking._id
+    });
+
+    if (!payment) {
+      payment = await Payment.create({
+        bookingId: booking._id,
+        hotelId: req.user.hotelId,
+        amount: booking.totalAmount,
+        status: "verified"
+      });
+    } else {
+      payment.status = "verified";
+      await payment.save();
+    }
+
+    res.json({ success: true, payment });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to verify payment" });
+  }
+});
+
+router.patch("/complete/:bookingId", verifyToken, async (req, res) => {
+  try {
+    const booking = await Booking.findOne({
+      _id: req.params.bookingId,
+      hotelId: req.user.hotelId
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    const payment = await Payment.findOne({
+      bookingId: booking._id
+    });
+
+    if (!payment || payment.status !== "verified") {
+      return res.status(400).json({
+        error: "Please first verify the payment then complete booking"
+      });
+    }
+
+    booking.status = "completed";
+    await booking.save();
+
+    res.json({ success: true, booking });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to complete booking" });
+  }
+});
+
+router.patch("/confirm/:bookingId", verifyToken, async (req, res) => {
+  try {
+    const booking = await Booking.findOne({
+      _id: req.params.bookingId,
+      hotelId: req.user.hotelId,
+    });
+
+    if (!booking)
+      return res.status(404).json({ error: "Booking not found" });
+
+    booking.status = "confirmed";
+    await booking.save();
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to confirm booking" });
+  }
+});
+
 // ✅ EXPORT
 module.exports = router;
