@@ -1235,6 +1235,16 @@ _Ref: ${payment?.transactionNote || ""}_`;
         phoneNumberId,
         token,
       );
+
+      const io = req.app.get("io");
+
+      io.to(hotel._id.toString()).emit("human_request", {
+        phone: customerPhone,
+        hotelName: hotel.name,
+        message: "Customer wants human support",
+        time: new Date()
+      });
+
       await sendHumanAlertEmail(hotel, customerPhone);
 
       return;
