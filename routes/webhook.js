@@ -12,7 +12,7 @@ const Booking = require("../models/Booking");
 const Payment = require("../models/Payment");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const sendHumanAlertEmail=require("../config/mail");
+const sendHumanAlertEmail = require("../config/mail");
 
 // ============================================================
 // PLATFORM PAYMENT CONFIG
@@ -282,7 +282,6 @@ async function sendImage(to, imageUrl, caption, phoneNumberId, token) {
   }
 }
 
-
 async function sendVideo(to, videoUrl, caption, phoneNumberId, token) {
   try {
     await axios.post(
@@ -301,7 +300,7 @@ async function sendVideo(to, videoUrl, caption, phoneNumberId, token) {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-      }
+      },
     );
   } catch (err) {
     console.error("❌ sendVideo error:", err.response?.data || err.message);
@@ -836,7 +835,7 @@ async function getSmartReply(
     ];
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [...systemMessages, ...history],
       max_tokens: 600,
       temperature: 0.75,
@@ -1205,14 +1204,20 @@ _Ref: ${payment?.transactionNote || ""}_`;
       }
     }
 
-    if (interactiveId === "talk_human") {
+    const io = req.app.get("io");
 
+    io.to(hotel._id.toString()).emit("refreshChats", {
+      hotelId: hotel._id,
+      phone: customerPhone
+    });
+
+    if (interactiveId === "talk_human") {
       await saveMessage(
         customerPhone,
         hotel._id,
         customer._id,
         "user",
-        "[User]: Talk to Human"
+        "[User]: Talk to Human",
       );
 
       await Chat.findOneAndUpdate(
@@ -1226,7 +1231,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         hotel._id,
         customer._id,
         "assistant",
-        "👤 You're now connected to our team."
+        "👤 You're now connected to our team.",
       );
 
       await sendText(
@@ -1242,7 +1247,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         phone: customerPhone,
         hotelName: hotel.name,
         message: "Customer wants human support",
-        time: new Date()
+        time: new Date(),
       });
 
       await sendHumanAlertEmail(hotel, customerPhone);
@@ -1256,7 +1261,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         hotel._id,
         customer._id,
         "user",
-        "[User]: Back to Bot"
+        "[User]: Back to Bot",
       );
 
       await Chat.findOneAndUpdate(
@@ -1269,7 +1274,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         hotel._id,
         customer._id,
         "assistant",
-        "🤖 Bot resumed"
+        "🤖 Bot resumed",
       );
 
       await sendText(
