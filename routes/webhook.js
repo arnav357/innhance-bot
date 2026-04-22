@@ -834,8 +834,9 @@ async function getSmartReply(
         : []),
     ];
 
+
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [...systemMessages, ...history],
       max_tokens: 600,
       temperature: 0.75,
@@ -886,7 +887,7 @@ Conversation:
 ${history.map((m) => `${m.role}: ${m.content}`).join("\n")}`;
 
     const extraction = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [{ role: "user", content: extractPrompt }],
       max_tokens: 250,
       temperature: 0,
