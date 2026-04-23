@@ -809,6 +809,11 @@ async function getSmartReply(
       {
         role: "system",
         content:
+          "CRITICAL RULE: Never claim a booking is confirmed, completed, reserved, saved, created, paid, or guaranteed unless backend explicitly confirms it. Never invent bookings, payment status, QR generation, or reservations.",
+      },
+      {
+        role: "system",
+        content:
           "IDENTITY REMINDER: You are Inna, the hotel receptionist. " +
           "Every message is FROM you TO the customer. " +
           "Never produce a reply that reads like the customer is speaking. " +
@@ -1360,7 +1365,11 @@ _Ref: ${payment?.transactionNote || ""}_`;
         })
       : null;
 
-    if (pendingPayment && message.type === "text" && interactiveId !== "resend_qr") {
+    if (
+      pendingPayment &&
+      message.type === "text" &&
+      interactiveId !== "resend_qr"
+    ) {
       // Expired?
       if (
         pendingPayment.expiresAt &&
