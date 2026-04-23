@@ -1,52 +1,71 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 // Schema for individual messages
 const messageSchema = new mongoose.Schema({
   role: {
     type: String,
-    enum: ['user', 'assistant'],
-    required: true
+    enum: ["user", "assistant"],
+    required: true,
   },
   content: {
     type: String,
-    required: true
+    required: true,
   },
   time: {
-    type: String // Stores time like "10:00 AM"
-  }
+    type: String, // Stores time like "10:00 AM"
+  },
 });
 
-
 // Schema for the entire conversation
-const chatSchema = new mongoose.Schema({
-  name: { type: String, default: 'New Customer' },
-  phone: { type: String, required: true },
-  hotelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hotel', required: true },
-  customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
-  lastMessage: { type: String, default: '' },
-  time: { type: String, default: 'Just now' }, // e.g., "2 min ago" or "10:05 AM"
-  unread: { type: Number, default: 0 },
-  status: { type: String, enum: ['inquiry', 'booking_in_progress', 'booked', 'cancelled'], default: 'inquiry' },
-  avatar: { type: String, default: 'U' },
-  messages: [messageSchema],
-  bookingFlow: {
-  step: { type: String, default: null },
-  data: {
-    name: String,
-    checkIn: Date,
-    checkOut: Date,
-    guests: Number,
-    roomType: String
-  }
+const chatSchema = new mongoose.Schema(
+  {
+    name: { type: String, default: "New Customer" },
+    phone: { type: String, required: true },
+    hotelId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Hotel",
+      required: true,
+    },
+    customerId: { type: mongoose.Schema.Types.ObjectId, ref: "Customer" },
+    lastMessage: { type: String, default: "" },
+    time: { type: String, default: "Just now" }, // e.g., "2 min ago" or "10:05 AM"
+    unread: { type: Number, default: 0 },
+    status: {
+      type: String,
+      enum: [
+        "inquiry",
+        "booking_in_progress",
+        "awaiting_confirmation",
+        "payment_pending",
+        "payment_expired",
+        "booked",
+        "cancelled",
+        "human_support",
+      ],
+      default: "inquiry",
+    },
+    avatar: { type: String, default: "U" },
+    messages: [messageSchema],
+    bookingFlow: {
+      step: { type: String, default: null },
+      data: {
+        name: String,
+        checkIn: Date,
+        checkOut: Date,
+        guests: Number,
+        roomType: String,
+      },
+    },
+    mode: {
+      type: String,
+      enum: ["bot", "human"],
+      default: "bot",
+    },
   },
-  mode: {
-    type: String,
-    enum: ["bot", "human"],
-    default: "bot",
-  },
-}, { timestamps: true });
+  { timestamps: true },
+);
 
 // One chat thread per phone per hotel.
 chatSchema.index({ phone: 1, hotelId: 1 }, { unique: true });
 
-module.exports = mongoose.model('Chat', chatSchema);
+module.exports = mongoose.model("Chat", chatSchema);

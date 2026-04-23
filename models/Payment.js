@@ -33,9 +33,10 @@ const paymentSchema = new mongoose.Schema({
   // verified  = screenshot received and OCR passed
   // failed    = screenshot OCR failed
   // settled   = you have manually transferred to hotel
+  
   status: {
     type:    String,
-    enum:    ['pending', 'verified', 'failed', 'settled'],
+    enum:    ['pending', 'verified', 'failed', 'settled','expired'],
     default: 'pending',
   },
 

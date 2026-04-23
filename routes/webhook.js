@@ -809,7 +809,7 @@ async function getSmartReply(
       {
         role: "system",
         content:
-          "CRITICAL RULE: Never claim a booking is confirmed, completed, reserved, saved, created, paid, or guaranteed unless backend explicitly confirms it. Never invent bookings, payment status, QR generation, or reservations. Do NOT say 'I've submitted your request' or 'I'll submit your request' — the backend handles booking creation automatically when the customer confirms. Instead, after showing a booking summary, ask: 'Would you like me to confirm this booking?'",
+          "CRITICAL RULE: Never claim a booking is confirmed, completed, reserved, saved, created, paid, or guaranteed unless backend explicitly confirms it. Never invent bookings, payment status, QR generation, or reservations.",
       },
       {
         role: "system",
@@ -935,11 +935,7 @@ ${history.map((m) => `${m.role}: ${m.content}`).join("\n")}`;
         checkOut: new Date(details.checkOut),
         roomType: details.roomType,
         numberOfGuests: details.numberOfGuests,
-        numberOfRooms: details.numberOfRooms || 1,
-        adultsCount: details.adultsCount || details.numberOfGuests || 1,
-        childrenCount: details.childrenCount || 0,
         totalAmount,
-        status: "confirmed",
       });
       await existing.save();
       return existing;
@@ -954,11 +950,8 @@ ${history.map((m) => `${m.role}: ${m.content}`).join("\n")}`;
       checkOut: new Date(details.checkOut),
       roomType: details.roomType,
       numberOfGuests: details.numberOfGuests || 1,
-      numberOfRooms: details.numberOfRooms || 1,
-      adultsCount: details.adultsCount || details.numberOfGuests || 1,
-      childrenCount: details.childrenCount || 0,
       totalAmount,
-      status: "confirmed",
+      status: "pending",
       source: "whatsapp",
     });
   } catch (err) {
@@ -1379,20 +1372,36 @@ _Ref: ${payment?.transactionNote || ""}_`;
     ) {
       // Expired?
       if (
-        pendingPayment.expiresAt &&
-        new Date() > new Date(pendingPayment.expiresAt)
-      ) {
-        pendingPayment.status = "expired";
-        await pendingPayment.save();
+  pendingPayment.expiresAt &&
+  new Date() > new Date(pendingPayment.expiresAt)
+) {
+  pendingPayment.status = "expired";
+  await pendingPayment.save();
 
-        await sendText(
-          customerPhone,
-          "⏰ Payment request expired. Please request QR again.",
-          phoneNumberId,
-          token,
-        );
-        return;
-      }
+  // Reset chat state
+  await Chat.findOneAndUpdate(
+    { phone: customerPhone, hotelId: hotel._id },
+    {
+      mode: "bot",
+      status: "payment_expired",
+      bookingFlow: { step: null, data: {} },
+    }
+  );
+
+  await sendButtons(
+    customerPhone,
+    "⏰ Payment request expired.\nWhat would you like to do now? 😊",
+    [
+      { id: "resend_qr", title: "🔁 Pay Again" },
+      { id: "menu_book", title: "🛏️ Book Room" },
+      { id: "talk_human", title: "👤 Talk Human" }
+    ],
+    phoneNumberId,
+    token
+  );
+
+  return;
+}
 
       pendingPayment.reminderCount += 1;
       await pendingPayment.save();
@@ -1421,18 +1430,15 @@ _Ref: ${payment?.transactionNote || ""}_`;
       return;
     }
 
-    // Re-fetch chat to get latest bookingFlow state
-    const freshChat = await Chat.findOne({ phone: customerPhone, hotelId: hotel._id });
-
-    if (freshChat?.bookingFlow?.step) {
-      const flow = freshChat.bookingFlow;
+    if (chat?.bookingFlow?.step) {
+      const flow = chat.bookingFlow;
 
       // STEP 1: NAME
       if (flow.step === "ask_name") {
         flow.data.name = userMessage;
         flow.step = "ask_checkin";
 
-        await freshChat.save();
+        await chat.save();
 
         await sendText(
           customerPhone,
@@ -1447,7 +1453,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
       if (flow.step === "ask_checkin") {
         const checkIn = parseDate(userMessage);
 
-        if (!checkIn || isNaN(checkIn.getTime())) {
+        if (isNaN(checkIn)) {
           await sendText(
             customerPhone,
             "Please enter a valid date like 25/04/2026 😊",
@@ -1457,20 +1463,10 @@ _Ref: ${payment?.transactionNote || ""}_`;
           return;
         }
 
-        if (checkIn < new Date(new Date().setHours(0, 0, 0, 0))) {
-          await sendText(
-            customerPhone,
-            "Check-in date can't be in the past 😊 Please enter a future date.",
-            phoneNumberId,
-            token,
-          );
-          return;
-        }
-
         flow.data.checkIn = checkIn;
         flow.step = "ask_checkout";
 
-        await freshChat.save();
+        await chat.save();
 
         await sendText(
           customerPhone,
@@ -1485,7 +1481,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
       if (flow.step === "ask_checkout") {
         const checkOut = parseDate(userMessage);
 
-        if (!checkOut || isNaN(checkOut.getTime()) || checkOut <= flow.data.checkIn) {
+        if (isNaN(checkOut) || checkOut <= flow.data.checkIn) {
           await sendText(
             customerPhone,
             "Check-out must be after check-in 😊",
@@ -1498,7 +1494,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         flow.data.checkOut = checkOut;
         flow.step = "ask_guests";
 
-        await freshChat.save();
+        await chat.save();
 
         await sendText(customerPhone, "How many guests?", phoneNumberId, token);
         return;
@@ -1521,32 +1517,18 @@ _Ref: ${payment?.transactionNote || ""}_`;
         flow.data.guests = guests;
         flow.step = "confirm";
 
-        await freshChat.save();
+        await chat.save();
 
         const nights = Math.ceil(
           (flow.data.checkOut - flow.data.checkIn) / (1000 * 60 * 60 * 24),
         );
-        const room = hotel.rooms?.find((r) => r.name === flow.data.roomType);
-
-        if (!room) {
-          await sendText(
-            customerPhone,
-            "Sorry, I couldn't find that room. Please start booking again 😔",
-            phoneNumberId,
-            token,
-          );
-          await Chat.findOneAndUpdate(
-            { phone: customerPhone, hotelId: hotel._id },
-            { bookingFlow: { step: null, data: {} } },
-          );
-          return;
-        }
+        const room = hotel.rooms.find((r) => r.name === flow.data.roomType);
 
         const total = room.price * nights;
 
         await sendText(
           customerPhone,
-          `📋 *Booking Summary:*\n\n👤 ${flow.data.name}\n🛏️ ${flow.data.roomType}\n📅 ${flow.data.checkIn.toDateString()} → ${flow.data.checkOut.toDateString()}\n👥 ${guests} guests\n💰 ₹${total}\n\nType *confirm* to proceed`,
+          `📋 Booking Summary:\n\n👤 ${flow.data.name}\n🛏️ ${flow.data.roomType}\n📅 ${flow.data.checkIn.toDateString()} → ${flow.data.checkOut.toDateString()}\n👥 ${guests} guests\n💰 ₹${total}\n\nType *confirm* to proceed`,
           phoneNumberId,
           token,
         );
@@ -1556,7 +1538,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
       // STEP 5: CONFIRM
       if (flow.step === "confirm") {
-        if (!/\b(confirm|yes|ok|okay|haan|proceed|book it|sure)\b/i.test(userMessage)) {
+        if (!/confirm/i.test(userMessage)) {
           await sendText(
             customerPhone,
             "Please type *confirm* to proceed 😊",
@@ -1569,7 +1551,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         const nights = Math.ceil(
           (flow.data.checkOut - flow.data.checkIn) / (1000 * 60 * 60 * 24),
         );
-        const room = hotel.rooms?.find((r) => r.name === flow.data.roomType);
+        const room = hotel.rooms.find((r) => r.name === flow.data.roomType);
         if (!room) {
           await sendText(
             customerPhone,
@@ -1919,121 +1901,17 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       return;
     }
 
-    // ── Pay via QR button ─────────────────────────────────────
-    if (interactiveId === "pay_qr") {
-      const booking = await Booking.findOne({
-        phone: { $in: [normalizedPhone, customerPhone] },
-        hotelId: hotel._id,
-        status: "confirmed",
-      }).sort({ createdAt: -1 });
-
-      if (!booking) {
-        await sendText(
-          customerPhone,
-          "No confirmed booking found. Please complete your booking first 😊",
-          phoneNumberId,
-          token,
-        );
-        return;
-      }
-
-      // Prevent duplicate payments
-      const existingPayment = await Payment.findOne({
-        bookingId: booking._id,
-        status: "pending",
-      });
-
-      if (!existingPayment) {
-        const bookingRef = booking._id.toString().slice(-6).toUpperCase();
-        await Payment.create({
-          hotelId: hotel._id,
-          hotelName: hotel.name,
-          bookingId: booking._id,
-          bookingRef,
-          customerPhone,
-          guestName: booking.guestName,
-          amount: booking.totalAmount,
-          transactionNote: `HOTEL-${hotel.shortCode}-BOOK-${bookingRef}`,
-          status: "pending",
-          reminderCount: 0,
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-        });
-      }
-
-      await sendPaymentQR(customerPhone, phoneNumberId, token, booking, hotel);
-      await saveMessage(customerPhone, hotel._id, customer._id, "assistant", "[Sent: Payment QR]");
-      return;
-    }
-
-    // ── Pay at Desk button ────────────────────────────────────
-    if (interactiveId === "pay_desk") {
-      const booking = await Booking.findOne({
-        phone: { $in: [normalizedPhone, customerPhone] },
-        hotelId: hotel._id,
-        status: "confirmed",
-      }).sort({ createdAt: -1 });
-
-      if (booking) {
-        const existingPayment = await Payment.findOne({ bookingId: booking._id });
-        if (!existingPayment) {
-          const bookingRef = booking._id.toString().slice(-6).toUpperCase();
-          await Payment.create({
-            hotelId: hotel._id,
-            hotelName: hotel.name,
-            bookingId: booking._id,
-            bookingRef,
-            customerPhone,
-            guestName: booking.guestName,
-            amount: booking.totalAmount,
-            transactionNote: `HOTEL-${hotel.shortCode}-BOOK-${bookingRef}`,
-            status: "pending",
-          });
-        }
-
-        await Chat.findOneAndUpdate(
-          { phone: customerPhone, hotelId: hotel._id },
-          { status: "booked" },
-        );
-
-        const nights = Math.ceil(
-          (new Date(booking.checkOut) - new Date(booking.checkIn)) /
-            (1000 * 60 * 60 * 24),
-        );
-
-        const confirmMsg = `✅ *Booking Confirmed — Pay at Desk!*
-
-👤 *Name:* ${booking.guestName}
-🛏️ *Room:* ${booking.roomType}
-📅 *Check-in:* ${new Date(booking.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-📅 *Check-out:* ${new Date(booking.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-🌙 *Nights:* ${nights}
-👥 *Guests:* ${booking.numberOfGuests}
-💰 *Amount Due:* ₹${booking.totalAmount?.toLocaleString()} _(payable at hotel)_
-
-Thank you for choosing *${hotel.name}!* 🏨
-Please carry a valid ID at check-in. See you soon! 😊
-
-_Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
-
-        await saveMessage(customerPhone, hotel._id, customer._id, "assistant", confirmMsg);
-        await sendText(customerPhone, confirmMsg, phoneNumberId, token);
-      } else {
-        await sendText(
-          customerPhone,
-          "No confirmed booking found. Please complete your booking first 😊",
-          phoneNumberId,
-          token,
-        );
-      }
-      return;
-    }
-
     if (interactiveId === "resend_qr") {
       const booking = await Booking.findOne({
         phone: { $in: [normalizedPhone, customerPhone] },
         hotelId: hotel._id,
         status: "confirmed",
       }).sort({ createdAt: -1 });
+
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        { status: "payment_pending" }
+      );
 
       if (booking) {
         await sendPaymentQR(
@@ -2174,6 +2052,11 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         expiresAt: new Date(Date.now() + 5 * 60 * 1000),
       });
 
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        { status: "payment_pending" }
+      );
+
       // ✅ Send QR
       const upiId = hotel.upiId;
       const upiName = hotel.upiName;
@@ -2202,119 +2085,50 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     );
     await sendText(customerPhone, reply, phoneNumberId, token);
 
-    // ── Detect if user just confirmed a booking summary ────────
-    const userConfirmed =
-      /\b(yes|sure|confirm|ok|okay|haan|bilkul|theek hai|proceed|go ahead|book it|book karo|yes for sure|for sure|done|correct|right|perfect|sounds good|great|book kar do)\b/i.test(
-        userMessage,
+    if (Math.random() < 0.5) {
+      await sendButtons(
+        customerPhone,
+        "Need more help?",
+        [
+          { id: "talk_human", title: "👤 Talk to Human" },
+          { id: "stay_bot", title: "🤖 Continue with Bot" },
+        ],
+        phoneNumberId,
+        token,
       );
-
-    // ── Detect follow-up queries after bot said "submitted" ───
-    const userAskingStatus =
-      /\b(is it booked|booked|confirmed|booking done|booking ho gaya|ho gaya|kiya|book hua|kab confirm|when.*confirm|status)\b/i.test(
-        userMessage,
-      );
-
-    const history = await getHistory(customerPhone, hotel._id);
-    const lastBotMsgs = history
-      .filter((m) => m.role === "assistant")
-      .slice(-4)
-      .map((m) => m.content.toLowerCase())
-      .join(" ");
-
-    const priorSummaryExists =
-      lastBotMsgs.includes("booking summary") ||
-      lastBotMsgs.includes("total amount") ||
-      lastBotMsgs.includes("estimated total") ||
-      lastBotMsgs.includes("submit this request") ||
-      lastBotMsgs.includes("submit your request") ||
-      lastBotMsgs.includes("submitted your request") ||
-      lastBotMsgs.includes("submitted the request") ||
-      (lastBotMsgs.includes("confirm") && lastBotMsgs.includes("₹"));
-
-    // ── If user is asking about booking status and we have a confirmed booking, send payment buttons ──
-    if (userAskingStatus) {
-      const existingConfirmed = await Booking.findOne({
-        phone: { $in: [normalizedPhone, customerPhone] },
-        hotelId: hotel._id,
-        status: "confirmed",
-      }).sort({ createdAt: -1 });
-
-      if (existingConfirmed) {
-        const existingPayment = await Payment.findOne({
-          bookingId: existingConfirmed._id,
-        });
-        if (!existingPayment) {
-          await saveMessage(
-            customerPhone,
-            hotel._id,
-            customer._id,
-            "assistant",
-            "[Sent: Payment method buttons]",
-          );
-          await sendButtons(
-            customerPhone,
-            "✅ Your booking is confirmed! How would you like to pay? 😊",
-            [
-              { id: "pay_qr", title: "💳 Pay via QR" },
-              { id: "pay_desk", title: "🏨 Pay at Desk" },
-            ],
-            phoneNumberId,
-            token,
-          );
-          return;
-        }
-      }
     }
 
+    // Try to extract booking in background
+    // const history = await getHistory(customerPhone, hotel._id);
+    // const booking = await tryExtractAndSaveBooking(
+    //   normalizedPhone,
+    //   hotel._id,
+    //   customer._id,
+    //   history,
+    //   hotel,
+    // );
 
-    if (userConfirmed && priorSummaryExists) {
-      // Extract and save booking from conversation history
-      const booking = await tryExtractAndSaveBooking(
-        normalizedPhone,
-        hotel._id,
-        customer._id,
-        history,
-        hotel,
-      );
+    // // Auto-send QR if booking summary was shown (and not pay-at-desk)
+    // const lowerReply = reply.toLowerCase();
+    // const isPayAtDesk =
+    //   lowerReply.includes("pay at desk") || lowerReply.includes("upon arrival");
+    // const bookingComplete =
+    //   lowerReply.includes("booking summary") ||
+    //   lowerReply.includes("total cost") ||
+    //   lowerReply.includes("total amount") ||
+    //   (lowerReply.includes("confirm") && lowerReply.includes("₹"));
 
-      if (booking) {
-        // ✅ Upgrade booking status to "confirmed" so payment handlers can find it
-        if (booking.status !== "confirmed") {
-          booking.status = "confirmed";
-          await booking.save();
-        }
-
-        // ✅ Update chat status
-        await Chat.findOneAndUpdate(
-          { phone: customerPhone, hotelId: hotel._id },
-          { status: "booking_confirmed" },
-        );
-
-        // Ask payment preference
-        setTimeout(async () => {
-          await saveMessage(
-            customerPhone,
-            hotel._id,
-            customer._id,
-            "assistant",
-            "[Sent: Payment method buttons]",
-          );
-          await sendButtons(
-            customerPhone,
-            "How would you like to pay? 😊",
-            [
-              { id: "pay_qr", title: "💳 Pay via QR" },
-              { id: "pay_desk", title: "🏨 Pay at Desk" },
-            ],
-            phoneNumberId,
-            token,
-          );
-        }, 1000);
-        return;
-      }
-    }
-
-    // (random help buttons removed — they interrupt booking flow)
+    // if (bookingComplete && booking && !isPayAtDesk) {
+    //   setTimeout(async () => {
+    //     await sendPaymentQR(
+    //       customerPhone,
+    //       phoneNumberId,
+    //       token,
+    //       booking,
+    //       hotel,
+    //     );
+    //   }, 2000);
+    // }
   } catch (err) {
     console.error("❌ Webhook error:", err.message, err.stack);
   }
