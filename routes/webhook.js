@@ -834,7 +834,6 @@ async function getSmartReply(
         : []),
     ];
 
-
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [...systemMessages, ...history],
@@ -1209,7 +1208,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
     io.to(hotel._id.toString()).emit("refreshChats", {
       hotelId: hotel._id,
-      phone: customerPhone
+      phone: customerPhone,
     });
 
     if (interactiveId === "talk_human") {
@@ -1347,6 +1346,64 @@ _Ref: ${payment?.transactionNote || ""}_`;
     //   phone: customerPhone,
     //   hotelId: hotel._id,
     // });
+
+    const latestBooking = await Booking.findOne({
+      phone: { $in: [normalizedPhone, customerPhone] },
+      hotelId: hotel._id,
+      status: "confirmed",
+    }).sort({ createdAt: -1 });
+
+    const pendingPayment = latestBooking
+      ? await Payment.findOne({
+          bookingId: latestBooking._id,
+          status: "pending",
+        })
+      : null;
+
+    if (pendingPayment && message.type === "text" && interactiveId !== "resend_qr") {
+      // Expired?
+      if (
+        pendingPayment.expiresAt &&
+        new Date() > new Date(pendingPayment.expiresAt)
+      ) {
+        pendingPayment.status = "expired";
+        await pendingPayment.save();
+
+        await sendText(
+          customerPhone,
+          "⏰ Payment request expired. Please request QR again.",
+          phoneNumberId,
+          token,
+        );
+        return;
+      }
+
+      pendingPayment.reminderCount += 1;
+      await pendingPayment.save();
+
+      let msg = "";
+
+      if (pendingPayment.reminderCount === 1) {
+        msg = "Kindly send your payment screenshot for verification 📸";
+      } else if (pendingPayment.reminderCount === 2) {
+        msg = "We're waiting for your payment screenshot 😊";
+      } else {
+        msg = "Please upload screenshot to confirm your booking.";
+      }
+
+      await sendButtons(
+        customerPhone,
+        msg,
+        [
+          { id: "resend_qr", title: "🔁 Resend QR" },
+          { id: "talk_human", title: "👤 Talk to Human" },
+        ],
+        phoneNumberId,
+        token,
+      );
+
+      return;
+    }
 
     if (chat?.bookingFlow?.step) {
       const flow = chat.bookingFlow;
@@ -1528,50 +1585,50 @@ _Ref: ${payment?.transactionNote || ""}_`;
     // ══════════════════════════════════════════════════════════
     // HANDLER 1: "paid" text → ask for screenshot
     // ══════════════════════════════════════════════════════════
-    if (
-      /^(paid|payment done|payment complete|pay kar diya|pay ho gaya)/i.test(
-        userMessage,
-      )
-    ) {
-      const booking = await Booking.findOne({
-        phone: { $in: [normalizedPhone, customerPhone] },
-        hotelId: hotel._id,
-        status: "confirmed",
-      }).sort({ createdAt: -1 });
+    // if (
+    //   /^(paid|payment done|payment complete|pay kar diya|pay ho gaya)/i.test(
+    //     userMessage,
+    //   )
+    // ) {
+    //   const booking = await Booking.findOne({
+    //     phone: { $in: [normalizedPhone, customerPhone] },
+    //     hotelId: hotel._id,
+    //     status: "confirmed",
+    //   }).sort({ createdAt: -1 });
 
-      const payment = booking
-        ? await Payment.findOne({
-            bookingId: booking._id,
-            status: "pending",
-          })
-        : null;
+    //   const payment = booking
+    //     ? await Payment.findOne({
+    //         bookingId: booking._id,
+    //         status: "pending",
+    //       })
+    //     : null;
 
-      if (booking && payment) {
-        await saveMessage(
-          customerPhone,
-          hotel._id,
-          customer._id,
-          "user",
-          userMessage,
-        );
+    //   if (booking && payment) {
+    //     await saveMessage(
+    //       customerPhone,
+    //       hotel._id,
+    //       customer._id,
+    //       "user",
+    //       userMessage,
+    //     );
 
-        const msg =
-          `📸 Please send a *screenshot* of your successful payment so I can verify it!\n\n` +
-          `✅ Receiver: *${PLATFORM_UPI_NAME}*\n` +
-          `✅ Amount: ₹${booking.totalAmount?.toLocaleString()}`;
+    //     const msg =
+    //       `📸 Please send a *screenshot* of your successful payment so I can verify it!\n\n` +
+    //       `✅ Receiver: *${PLATFORM_UPI_NAME}*\n` +
+    //       `✅ Amount: ₹${booking.totalAmount?.toLocaleString()}`;
 
-        await sendText(customerPhone, msg, phoneNumberId, token);
-      } else {
-        await sendText(
-          customerPhone,
-          "Please request a payment QR first before confirming payment 😊",
-          phoneNumberId,
-          token,
-        );
-      }
+    //     await sendText(customerPhone, msg, phoneNumberId, token);
+    //   } else {
+    //     await sendText(
+    //       customerPhone,
+    //       "Please request a payment QR first before confirming payment 😊",
+    //       phoneNumberId,
+    //       token,
+    //     );
+    //   }
 
-      return;
-    }
+    //   return;
+    // }
 
     // ══════════════════════════════════════════════════════════
     // HANDLER 2: Pay at desk
@@ -1819,6 +1876,26 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       return;
     }
 
+    if (interactiveId === "resend_qr") {
+      const booking = await Booking.findOne({
+        phone: { $in: [normalizedPhone, customerPhone] },
+        hotelId: hotel._id,
+        status: "confirmed",
+      }).sort({ createdAt: -1 });
+
+      if (booking) {
+        await sendPaymentQR(
+          customerPhone,
+          phoneNumberId,
+          token,
+          booking,
+          hotel,
+        );
+      }
+
+      return;
+    }
+
     // ── Fallback default room IDs ─────────────────────────────
     if (
       ["room_standard", "room_deluxe", "room_suite"].includes(interactiveId)
@@ -1941,6 +2018,8 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         amount: booking.totalAmount,
         transactionNote: `HOTEL-${hotel.shortCode}-BOOK-${bookingRef}`,
         status: "pending",
+        reminderCount: 0,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
       });
 
       // ✅ Send QR

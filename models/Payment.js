@@ -42,6 +42,8 @@ const paymentSchema = new mongoose.Schema({
   // When you manually transferred money to the hotel
   settledAt:   { type: Date },
   settledNote: { type: String }, // e.g. "Transferred via NEFT on 5 Nov"
+  reminderCount: { type: Number, default: 0 },
+  expiresAt: Date,
 
 }, { timestamps: true });
 
