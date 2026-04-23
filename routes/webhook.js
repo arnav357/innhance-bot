@@ -1435,7 +1435,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
       // STEP 2: CHECK-IN
       if (flow.step === "ask_checkin") {
-        const checkIn = new parseDate(userMessage);
+        const checkIn = parseDate(userMessage);
 
         if (isNaN(checkIn)) {
           await sendText(
@@ -1463,7 +1463,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
       // STEP 3: CHECK-OUT
       if (flow.step === "ask_checkout") {
-        const checkOut = new parseDate(userMessage);
+        const checkOut = parseDate(userMessage);
 
         if (isNaN(checkOut) || checkOut <= flow.data.checkIn) {
           await sendText(
@@ -1885,6 +1885,115 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       return;
     }
 
+    // ── Pay via QR button ─────────────────────────────────────
+    if (interactiveId === "pay_qr") {
+      const booking = await Booking.findOne({
+        phone: { $in: [normalizedPhone, customerPhone] },
+        hotelId: hotel._id,
+        status: "confirmed",
+      }).sort({ createdAt: -1 });
+
+      if (!booking) {
+        await sendText(
+          customerPhone,
+          "No confirmed booking found. Please complete your booking first 😊",
+          phoneNumberId,
+          token,
+        );
+        return;
+      }
+
+      // Prevent duplicate payments
+      const existingPayment = await Payment.findOne({
+        bookingId: booking._id,
+        status: "pending",
+      });
+
+      if (!existingPayment) {
+        const bookingRef = booking._id.toString().slice(-6).toUpperCase();
+        await Payment.create({
+          hotelId: hotel._id,
+          hotelName: hotel.name,
+          bookingId: booking._id,
+          bookingRef,
+          customerPhone,
+          guestName: booking.guestName,
+          amount: booking.totalAmount,
+          transactionNote: `HOTEL-${hotel.shortCode}-BOOK-${bookingRef}`,
+          status: "pending",
+          reminderCount: 0,
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        });
+      }
+
+      await sendPaymentQR(customerPhone, phoneNumberId, token, booking, hotel);
+      await saveMessage(customerPhone, hotel._id, customer._id, "assistant", "[Sent: Payment QR]");
+      return;
+    }
+
+    // ── Pay at Desk button ────────────────────────────────────
+    if (interactiveId === "pay_desk") {
+      const booking = await Booking.findOne({
+        phone: { $in: [normalizedPhone, customerPhone] },
+        hotelId: hotel._id,
+        status: "confirmed",
+      }).sort({ createdAt: -1 });
+
+      if (booking) {
+        const existingPayment = await Payment.findOne({ bookingId: booking._id });
+        if (!existingPayment) {
+          const bookingRef = booking._id.toString().slice(-6).toUpperCase();
+          await Payment.create({
+            hotelId: hotel._id,
+            hotelName: hotel.name,
+            bookingId: booking._id,
+            bookingRef,
+            customerPhone,
+            guestName: booking.guestName,
+            amount: booking.totalAmount,
+            transactionNote: `HOTEL-${hotel.shortCode}-BOOK-${bookingRef}`,
+            status: "pending",
+          });
+        }
+
+        await Chat.findOneAndUpdate(
+          { phone: customerPhone, hotelId: hotel._id },
+          { status: "booked" },
+        );
+
+        const nights = Math.ceil(
+          (new Date(booking.checkOut) - new Date(booking.checkIn)) /
+            (1000 * 60 * 60 * 24),
+        );
+
+        const confirmMsg = `✅ *Booking Confirmed — Pay at Desk!*
+
+👤 *Name:* ${booking.guestName}
+🛏️ *Room:* ${booking.roomType}
+📅 *Check-in:* ${new Date(booking.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+📅 *Check-out:* ${new Date(booking.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+🌙 *Nights:* ${nights}
+👥 *Guests:* ${booking.numberOfGuests}
+💰 *Amount Due:* ₹${booking.totalAmount?.toLocaleString()} _(payable at hotel)_
+
+Thank you for choosing *${hotel.name}!* 🏨
+Please carry a valid ID at check-in. See you soon! 😊
+
+_Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
+
+        await saveMessage(customerPhone, hotel._id, customer._id, "assistant", confirmMsg);
+        await sendText(customerPhone, confirmMsg, phoneNumberId, token);
+      } else {
+        await sendText(
+          customerPhone,
+          "No confirmed booking found. Please complete your booking first 😊",
+          phoneNumberId,
+          token,
+        );
+      }
+      return;
+    }
+
     if (interactiveId === "resend_qr") {
       const booking = await Booking.findOne({
         phone: { $in: [normalizedPhone, customerPhone] },
@@ -2059,7 +2168,57 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     );
     await sendText(customerPhone, reply, phoneNumberId, token);
 
-    if (Math.random() < 0.5) {
+    // ── Detect if user just confirmed a booking summary ────────
+    const userConfirmed =
+      /\b(yes|sure|confirm|ok|okay|haan|bilkul|theek hai|proceed|go ahead|book it|book karo|yes for sure|for sure)\b/i.test(
+        userMessage,
+      );
+
+    const history = await getHistory(customerPhone, hotel._id);
+    const lastBotMsgs = history
+      .filter((m) => m.role === "assistant")
+      .slice(-4)
+      .map((m) => m.content.toLowerCase())
+      .join(" ");
+
+    const priorSummaryExists =
+      lastBotMsgs.includes("booking summary") ||
+      lastBotMsgs.includes("total amount") ||
+      lastBotMsgs.includes("estimated total") ||
+      lastBotMsgs.includes("submit this request") ||
+      lastBotMsgs.includes("submit your request") ||
+      (lastBotMsgs.includes("confirm") && lastBotMsgs.includes("₹"));
+
+    if (userConfirmed && priorSummaryExists) {
+      // Extract and save booking from conversation history
+      const booking = await tryExtractAndSaveBooking(
+        normalizedPhone,
+        hotel._id,
+        customer._id,
+        history,
+        hotel,
+      );
+
+      if (booking) {
+        // Ask payment preference
+        setTimeout(async () => {
+          await sendButtons(
+            customerPhone,
+            "How would you like to pay? 😊",
+            [
+              { id: "pay_qr", title: "💳 Pay via QR" },
+              { id: "pay_desk", title: "🏨 Pay at Desk" },
+            ],
+            phoneNumberId,
+            token,
+          );
+        }, 1000);
+        return;
+      }
+    }
+
+    // Show help buttons occasionally for non-confirmation messages
+    if (!userConfirmed && Math.random() < 0.5) {
       await sendButtons(
         customerPhone,
         "Need more help?",
@@ -2071,38 +2230,6 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         token,
       );
     }
-
-    // Try to extract booking in background
-    // const history = await getHistory(customerPhone, hotel._id);
-    // const booking = await tryExtractAndSaveBooking(
-    //   normalizedPhone,
-    //   hotel._id,
-    //   customer._id,
-    //   history,
-    //   hotel,
-    // );
-
-    // // Auto-send QR if booking summary was shown (and not pay-at-desk)
-    // const lowerReply = reply.toLowerCase();
-    // const isPayAtDesk =
-    //   lowerReply.includes("pay at desk") || lowerReply.includes("upon arrival");
-    // const bookingComplete =
-    //   lowerReply.includes("booking summary") ||
-    //   lowerReply.includes("total cost") ||
-    //   lowerReply.includes("total amount") ||
-    //   (lowerReply.includes("confirm") && lowerReply.includes("₹"));
-
-    // if (bookingComplete && booking && !isPayAtDesk) {
-    //   setTimeout(async () => {
-    //     await sendPaymentQR(
-    //       customerPhone,
-    //       phoneNumberId,
-    //       token,
-    //       booking,
-    //       hotel,
-    //     );
-    //   }, 2000);
-    // }
   } catch (err) {
     console.error("❌ Webhook error:", err.message, err.stack);
   }
