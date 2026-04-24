@@ -235,7 +235,19 @@ function detectInterruption(text = "") {
   );
 }
 
+function getStepQuestion(step) {
+   if (step === "ask_checkout")
+      return "What is your check-out date? 😊";
+
+   if (step === "ask_guests")
+      return "How many guests? 😊";
+
+   if (step === "ask_name")
+      return "What's your full name? 😊";
+
+   return "Let's continue your booking 😊";
+}
 
 module.exports = {
-  buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion,detectInterruption
+  buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion,detectInterruption,getStepQuestion
 };

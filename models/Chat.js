@@ -48,6 +48,7 @@ const chatSchema = new mongoose.Schema(
     messages: [messageSchema],
     bookingFlow: {
       step: { type: String, default: null },
+      awaitingResume: { type: Boolean, default: false },
       data: {
         name: String,
         checkIn: Date,

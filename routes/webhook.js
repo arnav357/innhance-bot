@@ -21,6 +21,7 @@ const {
   detectLanguage,
   looksLikeQuestion,
   detectInterruption,
+  getStepQuestion,
 } = require("../components/webhookFunctions");
 
 // ============================================================
@@ -1289,9 +1290,48 @@ _Ref: ${payment?.transactionNote || ""}_`;
     if (chat?.bookingFlow?.step) {
       const flow = chat.bookingFlow;
 
+      // ===================================
+      // 1. Waiting for continue confirmation
+      // ===================================
+      if (flow.awaitingResume) {
+        if (/^(yes|haan|ha|yeah|sure|ok|continue)$/i.test(userMessage.trim())) {
+          flow.awaitingResume = false;
+          await chat.save();
+
+          return await askPendingStep(flow.step);
+        }
+
+        if (/^(no|later|cancel)$/i.test(userMessage.trim())) {
+          flow.awaitingResume = false;
+          await chat.save();
+
+          await sendText(
+            customerPhone,
+            "No problem 😊 Message me anytime to continue your booking.",
+            phoneNumberId,
+            token,
+          );
+          return;
+        }
+
+        await sendText(
+          customerPhone,
+          "Would you like to continue your booking? 😊",
+          phoneNumberId,
+          token,
+        );
+        return;
+      }
+
+      // ===================================
+      // 2. Detect interruption question
+      // ===================================
       const isQuestion = detectInterruption(userMessage);
 
       if (isQuestion) {
+        flow.awaitingResume = true;
+        await chat.save();
+
         const reply = await getSmartReply(
           customerPhone,
           hotel._id,
@@ -1300,22 +1340,22 @@ _Ref: ${payment?.transactionNote || ""}_`;
           `
             Customer is in active booking flow.
             Current step: ${flow.step}
+            Known data: ${JSON.stringify(flow.data)}
 
-            Already collected:
-            ${JSON.stringify(flow.data)}
-
-            Answer customer's question first.
-            Then continue booking from EXACT same step.
-            Do not restart booking.
-            Ask only next missing detail.
-      `,
+            Answer all questions warmly.
+            Then ask if customer wants to continue booking.
+`,
           hotel,
         );
 
         await sendText(customerPhone, reply, phoneNumberId, token);
         return;
       }
-      
+
+      // ===================================
+      // 3. Normal booking step processing
+      // ===================================
+
       // STEP 1: NAME
       if (flow.step === "ask_name") {
         flow.data.name = userMessage;
