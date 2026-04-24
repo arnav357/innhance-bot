@@ -11,6 +11,7 @@ const Chat = require("../models/Chat");
 const Booking = require("../models/Booking");
 const Payment = require("../models/Payment");
 
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const sendHumanAlertEmail = require("../config/mail");
 const {
@@ -21,7 +22,7 @@ const {
   detectLanguage,
   looksLikeQuestion,
   detectInterruption,
-  getStepQuestion,
+  askPendingStep,
 } = require("../components/webhookFunctions");
 
 // ============================================================

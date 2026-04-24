@@ -235,19 +235,54 @@ function detectInterruption(text = "") {
   );
 }
 
-function getStepQuestion(step) {
-   if (step === "ask_checkout")
-      return "What is your check-out date? 😊";
 
-   if (step === "ask_guests")
-      return "How many guests? 😊";
 
-   if (step === "ask_name")
-      return "What's your full name? 😊";
+// async functions:
 
-   return "Let's continue your booking 😊";
+async function sendText(to, message, phoneNumberId, token) {
+  try {
+    await axios.post(
+      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      {
+        messaging_product: "whatsapp",
+        to,
+        type: "text",
+        text: { body: message },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  } catch (err) {
+    console.error("❌ sendText error:", err.response?.data || err.message);
+  }
+}
+
+async function askPendingStep(step) {
+  if (step === "ask_name") {
+    await sendText(customerPhone, "What's your full name? 😊", phoneNumberId, token);
+    return;
+  }
+
+  if (step === "ask_checkin") {
+    await sendText(customerPhone, "What is your check-in date? 😊", phoneNumberId, token);
+    return;
+  }
+
+  if (step === "ask_checkout") {
+    await sendText(customerPhone, "What is your check-out date? 😊", phoneNumberId, token);
+    return;
+  }
+
+  if (step === "ask_guests") {
+    await sendText(customerPhone, "How many guests? 😊", phoneNumberId, token);
+    return;
+  }
 }
 
 module.exports = {
-  buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion,detectInterruption,getStepQuestion
+  buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion,detectInterruption,askPendingStep
 };
