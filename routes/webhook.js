@@ -11,10 +11,17 @@ const Chat = require("../models/Chat");
 const Booking = require("../models/Booking");
 const Payment = require("../models/Payment");
 
-
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const sendHumanAlertEmail = require("../config/mail");
-const { buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion } = require("../components/webhookFunctions");
+const {
+  buildSystemPrompt,
+  normalizePhone,
+  buildUpiLink,
+  buildTransactionNote,
+  detectLanguage,
+  looksLikeQuestion,
+  detectInterruption,
+} = require("../components/webhookFunctions");
 
 // ============================================================
 // PLATFORM PAYMENT CONFIG
@@ -33,7 +40,6 @@ const FALLBACK_IMAGES = {
   deluxe: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800",
   suite: "https://images.unsplash.com/photo-1631049552057-403cdb8f0658?w=800",
 };
-
 
 // ============================================================
 // WHATSAPP SEND FUNCTIONS — all accept token param
@@ -1021,7 +1027,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customerPhone,
         "👤 Sure 😊 Please stay connected. Our team will reply soon.",
         phoneNumberId,
-        token
+        token,
       );
       return;
     }
@@ -1283,6 +1289,33 @@ _Ref: ${payment?.transactionNote || ""}_`;
     if (chat?.bookingFlow?.step) {
       const flow = chat.bookingFlow;
 
+      const isQuestion = detectInterruption(userMessage);
+
+      if (isQuestion) {
+        const reply = await getSmartReply(
+          customerPhone,
+          hotel._id,
+          customer._id,
+          userMessage,
+          `
+            Customer is in active booking flow.
+            Current step: ${flow.step}
+
+            Already collected:
+            ${JSON.stringify(flow.data)}
+
+            Answer customer's question first.
+            Then continue booking from EXACT same step.
+            Do not restart booking.
+            Ask only next missing detail.
+      `,
+          hotel,
+        );
+
+        await sendText(customerPhone, reply, phoneNumberId, token);
+        return;
+      }
+      
       // STEP 1: NAME
       if (flow.step === "ask_name") {
         flow.data.name = userMessage;

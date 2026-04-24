@@ -226,8 +226,16 @@ function looksLikeQuestion(text = "") {
   );
 }
 
+function detectInterruption(text = "") {
+  const t = text.toLowerCase().trim();
+
+  return (
+    t.includes("?") ||
+    /do you|is there|have you|can i|what|where|when|how|which|price|wifi|parking|toiletries|couple|pet|local id|cancel/i.test(t)
+  );
+}
 
 
 module.exports = {
-  buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion
+  buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion,detectInterruption
 };
