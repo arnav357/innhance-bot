@@ -1291,6 +1291,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
     if (chat?.bookingFlow?.step) {
       const flow = chat.bookingFlow;
 
+      
       // ===================================
       // 1. Waiting for continue confirmation
       // ===================================
@@ -1299,7 +1300,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
           flow.awaitingResume = false;
           await chat.save();
 
-          return await askPendingStep(flow.step);
+          return await askPendingStep(flow.step,customerPhone, phoneNumberId, token);
         }
 
         if (/^(no|later|cancel)$/i.test(userMessage.trim())) {

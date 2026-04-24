@@ -261,7 +261,8 @@ async function sendText(to, message, phoneNumberId, token) {
   }
 }
 
-async function askPendingStep(step) {
+
+async function askPendingStep(step, customerPhone, phoneNumberId, token) {
   if (step === "ask_name") {
     await sendText(customerPhone, "What's your full name? 😊", phoneNumberId, token);
     return;
