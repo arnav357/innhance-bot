@@ -11,9 +11,10 @@ const Chat = require("../models/Chat");
 const Booking = require("../models/Booking");
 const Payment = require("../models/Payment");
 
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const sendHumanAlertEmail = require("../config/mail");
-const { buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion } = require("../config/webhookFunctions");
+const { buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion } = require("../components/webhookFunctions");
 
 // ============================================================
 // PLATFORM PAYMENT CONFIG
