@@ -226,15 +226,95 @@ function looksLikeQuestion(text = "") {
   );
 }
 
+
 function detectInterruption(text = "") {
   const t = text.toLowerCase().trim();
 
-  return (
-    t.includes("?") ||
-    /do you|is there|have you|can i|what|where|when|how|which|price|wifi|parking|toiletries|couple|pet|local id|cancel/i.test(t)
-  );
+  // direct question mark
+  if (t.includes("?")) return true;
+
+  // common asks
+  const patterns = [
+    /show|see|send|share|dikhao|dikhaiye|bhejo/,
+    /image|images|photo|photos|pic|pics|video/,
+    /price|rate|cost|charges/,
+    /wifi|parking|pool|gym|spa|toiletries|breakfast/,
+    /pet|couple|local id|cancel|refund/,
+    /where|location|address|near|distance/,
+    /what|how|when|which|can i|do you|is there|have you/,
+    /room details|room info|amenities/,
+    /available hai|hai kya|mil jayega/
+  ];
+
+  return patterns.some((p) => p.test(t));
 }
 
+
+async function classifyMessage(userMessage, bookingStep = null) {
+  try {
+    const prompt = `
+You are an intent classifier for a hotel booking WhatsApp bot.
+
+Return ONLY valid JSON:
+
+{
+  "type": "",
+  "intent": "",
+  "containsQuestion": true,
+  "containsBookingData": false
+}
+
+Allowed type values:
+booking_answer
+interruption_question
+show_rooms
+pricing_query
+policy_query
+human_request
+mixed
+general_chat
+unknown
+
+Examples:
+"room ki images dekhao" => show_rooms
+"yes" => booking_answer
+"30/04/2026" => booking_answer
+"parking free hai?" => interruption_question
+"30/04/2026 and toiletries?" => mixed
+"human se baat karni hai" => human_request
+"hotel manager se baat karni hai" => human_request
+`;
+
+    const res = await openai.chat.completions.create({
+      model: "gpt-4o",
+      temperature: 0,
+      max_tokens: 120,
+      messages: [
+        { role: "system", content: prompt },
+        {
+          role: "user",
+          content: `bookingStep: ${bookingStep}\nmessage: ${userMessage}`
+        }
+      ]
+    });
+
+    const raw = res.choices[0].message.content
+      .trim()
+      .replace(/```json|```/g, "");
+
+    return JSON.parse(raw);
+
+  } catch (err) {
+    console.log("Classifier error:", err.message);
+
+    return {
+      type: "unknown",
+      intent: "",
+      containsQuestion: false,
+      containsBookingData: false
+    };
+  }
+}
 
 
 // async functions:
@@ -285,5 +365,5 @@ async function askPendingStep(step, customerPhone, phoneNumberId, token) {
 }
 
 module.exports = {
-  buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion,detectInterruption,askPendingStep
+  buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion,detectInterruption,askPendingStep,classsifyMessage
 };

@@ -1343,9 +1343,18 @@ _Ref: ${payment?.transactionNote || ""}_`;
       // ===================================
       // 2. Detect interruption question
       // ===================================
-      const isQuestion = detectInterruption(userMessage);
+      const cls = await classifyMessage(userMessage, flow.step);
 
-      if (isQuestion) {
+      if (cls.type === "show_rooms") {
+        flow.awaitingResume = true;
+        await chat.save();
+        await sendRoomPhotos(customerPhone, phoneNumberId, token, hotel);
+        await sendText(customerPhone, "Here are the rooms images. Can I continue with my booking? 😊", phoneNumberId, token);
+        return;
+      }
+
+      if (cls.type === "interruption_question" || cls.type === "booking_answer" || cls.type === "pricing_query" || cls.type === "policy_query" || cls.type === "mixed" || cls.type==="general_chat" || cls.type === "unknown") { 
+        // GPT answer question + resume
         flow.awaitingResume = true;
         await chat.save();
 
@@ -1368,6 +1377,47 @@ _Ref: ${payment?.transactionNote || ""}_`;
         await sendText(customerPhone, reply, phoneNumberId, token);
         return;
       }
+
+      if(cls.type==="human_request"){
+        flow.awaitingResume = true;
+        await chat.save();
+        await sendButtons(
+        customerPhone,
+        "Need more help?",
+        [
+          { id: "talk_human", title: "👤 Talk to Human" },
+          { id: "resume_booking", title: "🤖 Continue with Bot" },
+        ],
+        phoneNumberId,
+        token,
+      );
+      return;
+      }
+      
+
+//       if (isQuestion) {
+//         flow.awaitingResume = true;
+//         await chat.save();
+
+//         const reply = await getSmartReply(
+//           customerPhone,
+//           hotel._id,
+//           customer._id,
+//           userMessage,
+//           `
+//             Customer is in active booking flow.
+//             Current step: ${flow.step}
+//             Known data: ${JSON.stringify(flow.data)}
+
+//             Answer all questions warmly.
+//             Then ask if customer wants to continue booking.
+// `,
+//           hotel,
+//         );
+
+//         await sendText(customerPhone, reply, phoneNumberId, token);
+//         return;
+//       }
 
       // ===================================
       // 3. Normal booking step processing
@@ -1396,7 +1446,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         if (!checkIn) {
           await sendText(
             customerPhone,
-            "Please enter a valid date like 25/04/2026 😊",
+            "Please enter a valid date 😊",
             phoneNumberId,
             token,
           );
@@ -1820,6 +1870,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       );
       await sendText(customerPhone, reply, phoneNumberId, token);
       return;
+    }
+
+    if (interactiveId === "resume_booking") {
+      flow.awaitingResume = false;
+      await chat.save();
+
+      return await askPendingStep(flow.step, customerPhone, phoneNumberId, token);
     }
 
     // ── Room selected from menu (dynamic room IDs) ────────────
