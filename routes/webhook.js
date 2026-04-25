@@ -1420,6 +1420,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
       // STEP 3: CHECK-OUT
       if (flow.step === "ask_checkout") {
         const checkOut = parseDate(userMessage);
+        const checkIn = new Date(flow.data.checkIn);
 
         if (!checkOut) {
           await sendText(
