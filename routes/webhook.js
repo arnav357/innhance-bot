@@ -11,7 +11,6 @@ const Chat = require("../models/Chat");
 const Booking = require("../models/Booking");
 const Payment = require("../models/Payment");
 
-
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const sendHumanAlertEmail = require("../config/mail");
 const {
@@ -576,15 +575,21 @@ async function isFirstMessage(phone, hotelId) {
 }
 
 function parseDate(input) {
-  const parts = input.split("/");
+  const parts = input.trim().split("/");
 
   if (parts.length !== 3) return null;
 
   const [day, month, year] = parts.map(Number);
 
+  if (!day || !month || !year) return null;
+
+  const currentYear = new Date().getFullYear();
+
+  // allow bookings only this year to next 5 years
+  if (year < currentYear || year > currentYear + 5) return null;
+
   const date = new Date(year, month - 1, day);
 
-  // Validate correct date (avoid 32/13/2026 etc)
   if (
     date.getFullYear() !== year ||
     date.getMonth() !== month - 1 ||
@@ -592,6 +597,12 @@ function parseDate(input) {
   ) {
     return null;
   }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+
+  if (date < today) return null;
 
   return date;
 }
@@ -1291,7 +1302,6 @@ _Ref: ${payment?.transactionNote || ""}_`;
     if (chat?.bookingFlow?.step) {
       const flow = chat.bookingFlow;
 
-      
       // ===================================
       // 1. Waiting for continue confirmation
       // ===================================
@@ -1300,7 +1310,12 @@ _Ref: ${payment?.transactionNote || ""}_`;
           flow.awaitingResume = false;
           await chat.save();
 
-          return await askPendingStep(flow.step,customerPhone, phoneNumberId, token);
+          return await askPendingStep(
+            flow.step,
+            customerPhone,
+            phoneNumberId,
+            token,
+          );
         }
 
         if (/^(no|later|cancel)$/i.test(userMessage.trim())) {
@@ -1378,7 +1393,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
       if (flow.step === "ask_checkin") {
         const checkIn = parseDate(userMessage);
 
-        if (isNaN(checkIn)) {
+        if (!checkIn) {
           await sendText(
             customerPhone,
             "Please enter a valid date like 25/04/2026 😊",
@@ -1388,7 +1403,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
           return;
         }
 
-        flow.data.checkIn = checkIn;
+        flow.data.checkIn = checkIn.toISOString();
         flow.step = "ask_checkout";
 
         await chat.save();
@@ -1406,7 +1421,17 @@ _Ref: ${payment?.transactionNote || ""}_`;
       if (flow.step === "ask_checkout") {
         const checkOut = parseDate(userMessage);
 
-        if (isNaN(checkOut) || checkOut <= flow.data.checkIn) {
+        if (!checkOut) {
+          await sendText(
+            customerPhone,
+            "Please enter a valid future check-out date 😊",
+            phoneNumberId,
+            token,
+          );
+          return;
+        }
+
+        if (checkOut <= checkIn) {
           await sendText(
             customerPhone,
             "Check-out must be after check-in 😊",
@@ -1416,7 +1441,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
           return;
         }
 
-        flow.data.checkOut = checkOut;
+        flow.data.checkOut = checkOut.toISOString();
         flow.step = "ask_guests";
 
         await chat.save();
@@ -1444,10 +1469,21 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
         await chat.save();
 
-        const nights = Math.ceil(
-          (flow.data.checkOut - flow.data.checkIn) / (1000 * 60 * 60 * 24),
-        );
+        const checkIn = new Date(flow.data.checkIn);
+        const checkOut = new Date(flow.data.checkOut);
+
+        const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
         const room = hotel.rooms.find((r) => r.name === flow.data.roomType);
+
+        if (!room) {
+          await sendText(
+            customerPhone,
+            "Sorry, selected room was not found ",
+            phoneNumberId,
+            token,
+          );
+          return;
+        }
 
         const total = room.price * nights;
 
