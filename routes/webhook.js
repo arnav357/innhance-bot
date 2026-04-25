@@ -1354,7 +1354,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         return;
       }
 
-      if (cls.type === "interruption_question" || cls.type === "booking_answer" || cls.type === "pricing_query" || cls.type === "policy_query" || cls.type === "mixed" || cls.type==="general_chat" || cls.type === "unknown") { 
+      if (cls.type === "interruption_question" || cls.type === "pricing_query" || cls.type === "policy_query") { 
         // GPT answer question + resume
         flow.awaitingResume = true;
         await chat.save();

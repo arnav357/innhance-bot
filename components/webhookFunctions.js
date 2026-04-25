@@ -265,24 +265,19 @@ Return ONLY valid JSON:
 }
 
 Allowed type values:
-booking_answer
 interruption_question
 show_rooms
 pricing_query
 policy_query
 human_request
-mixed
-general_chat
-unknown
 
 Examples:
 "room ki images dekhao" => show_rooms
-"yes" => booking_answer
-"30/04/2026" => booking_answer
 "parking free hai?" => interruption_question
-"30/04/2026 and toiletries?" => mixed
 "human se baat karni hai" => human_request
 "hotel manager se baat karni hai" => human_request
+"what is price of standard room per night" => pricing_query
+"what is cancellation policy" => policy_query
 `;
 
     const res = await openai.chat.completions.create({
@@ -308,7 +303,7 @@ Examples:
     console.log("Classifier error:", err.message);
 
     return {
-      type: "unknown",
+      type: "interruption_question",
       intent: "",
       containsQuestion: false,
       containsBookingData: false
