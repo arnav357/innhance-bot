@@ -22,9 +22,13 @@ payment
 human
 greeting
 unknown
+command
 
 If booking is already active and user sends:
 Deluxe / Suite / Standard (any room type name) then classify as: booking
+
+If booking is already active and user sends something like:
+Yes / Yes continue the bookinig / hmm / haan then classify as: command
 
 NOT show_rooms
 

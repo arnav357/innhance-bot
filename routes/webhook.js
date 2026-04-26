@@ -2039,6 +2039,24 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
 
       const bookingActive = freshChat?.bookingFlow?.active;
       if (bookingActive) {
+        const continueWords =
+        /^(yes|yep|yeah|haan|ha|hmm|ok|okay|sure|continue|go ahead|proceed)$/i;
+
+      if (
+        intent.type === "command" &&
+        continueWords.test(userMessage.trim())
+      ) {
+        return await handleSmartBooking(
+          { type: "booking", fields: {} },
+          freshChat,
+          customerPhone,
+          phoneNumberId,
+          token,
+          hotel,
+          customer
+        );
+      }
+
         // Human request during booking
         if (intent.type === "human") {
           await Chat.findOneAndUpdate(
