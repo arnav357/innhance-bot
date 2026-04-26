@@ -1064,6 +1064,16 @@ _Ref: ${payment?.transactionNote || ""}_`;
       phone: customerPhone,
     });
 
+    if (interactiveId === "continue_bot") {
+   await sendText(
+     customerPhone,
+     "😊 Sure, please continue. How can I help you",
+     phoneNumberId,
+     token
+   );
+   return;
+}
+
     if (interactiveId === "stay_human") {
       await sendText(
         customerPhone,
@@ -2082,6 +2092,22 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           );
         }
 
+        if (intent.type === "unknown") {
+
+  await sendButtons(
+    customerPhone,
+    "😔 Sorry, I couldn't understand that right now.\nWould you like to talk with our team?",
+    [
+      { id: "talk_human", title: "👤 Talk to Human" },
+      { id: "continue_bot", title: "🤖 Continue with Bot" }
+    ],
+    phoneNumberId,
+    token
+  );
+
+  return;
+}
+
         // Human request during booking
         if (intent.type === "human") {
           await Chat.findOneAndUpdate(
@@ -2413,6 +2439,22 @@ async function handleSmartBooking(
     }
 
     delete fields.date;
+  }
+
+  // --------------------
+  // GUESTS FALLBACK
+  // --------------------
+
+  if (currentMissing === "guests") {
+    const guestMatch = msg.match(/\b(\d{1,2})\b/);
+
+    if (guestMatch) {
+      const num = parseInt(guestMatch[1]);
+
+      if (num >= 1 && num <= 20) {
+        fields.guests = num;
+      }
+    }
   }
 
   let data = mergeBooking(oldData, fields);

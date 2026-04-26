@@ -51,6 +51,14 @@ hum 3 hai
 type = booking
 fields.guests = number
 
+6. If booking is active and user sends only a number like:
+1
+2
+3
+AND the current missing field is guests:
+type = booking
+fields.guests = number
+
 6. If user says yes/haan/ok/continue/proceed:
 type = command
 
