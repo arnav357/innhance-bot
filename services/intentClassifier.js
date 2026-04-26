@@ -23,6 +23,11 @@ human
 greeting
 unknown
 
+If booking is already active and user sends:
+Deluxe / Suite / Standard (any room type name) then classify as: booking
+
+NOT show_rooms
+
 Understand Hinglish:
 kal = tomorrow
 parso = day after tomorrow

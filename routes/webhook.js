@@ -1263,9 +1263,9 @@ _Ref: ${payment?.transactionNote || ""}_`;
             status: "payment_expired",
             bookingFlow: {
               active: false,
-              data: {}
-            }
-          }
+              data: {},
+            },
+          },
         );
 
         await sendButtons(
@@ -1954,49 +1954,48 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     }
 
     if (interactiveId === "pay_qr") {
+      const booking = await Booking.findOne({
+        phone: { $in: [normalizedPhone, customerPhone] },
+        hotelId: hotel._id,
+        status: "confirmed",
+      }).sort({ createdAt: -1 });
 
- const booking = await Booking.findOne({
-   phone: { $in:[normalizedPhone, customerPhone] },
-   hotelId: hotel._id,
-   status: "confirmed"
- }).sort({ createdAt:-1 });
+      if (!booking) {
+        await sendText(
+          customerPhone,
+          "No confirmed booking found 😊",
+          phoneNumberId,
+          token,
+        );
+        return;
+      }
 
- if (!booking) {
-   await sendText(
-     customerPhone,
-     "No confirmed booking found 😊",
-     phoneNumberId,
-     token
-   );
-   return;
- }
+      let payment = await Payment.findOne({
+        bookingId: booking._id,
+        status: "pending",
+      });
 
- let payment = await Payment.findOne({
-   bookingId: booking._id,
-   status: "pending"
- });
+      if (!payment) {
+        const bookingRef = booking._id.toString().slice(-6).toUpperCase();
 
- if (!payment) {
-   const bookingRef = booking._id.toString().slice(-6).toUpperCase();
+        payment = await Payment.create({
+          hotelId: hotel._id,
+          hotelName: hotel.name,
+          bookingId: booking._id,
+          bookingRef,
+          customerPhone,
+          guestName: booking.guestName,
+          amount: booking.totalAmount,
+          transactionNote: `HOTEL-${hotel.shortCode}-BOOK-${bookingRef}`,
+          status: "pending",
+          reminderCount: 0,
+          expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        });
+      }
 
-   payment = await Payment.create({
-     hotelId: hotel._id,
-     hotelName: hotel.name,
-     bookingId: booking._id,
-     bookingRef,
-     customerPhone,
-     guestName: booking.guestName,
-     amount: booking.totalAmount,
-     transactionNote: `HOTEL-${hotel.shortCode}-BOOK-${bookingRef}`,
-     status: "pending",
-     reminderCount: 0,
-     expiresAt: new Date(Date.now() + 15 * 60 * 1000)
-   });
- }
-
- await sendPaymentQR(customerPhone, phoneNumberId, token, booking, hotel);
- return;
-}
+      await sendPaymentQR(customerPhone, phoneNumberId, token, booking, hotel);
+      return;
+    }
 
     // ── Fallback default room IDs ─────────────────────────────
     if (
@@ -2033,54 +2032,79 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     }
 
     if (message.type === "text") {
-      // HUMAN REQUEST
-      if (intent.type === "human") {
-        await Chat.findOneAndUpdate(
-          { phone: customerPhone, hotelId: hotel._id },
-          { mode: "human" },
-        );
+      const freshChat = await Chat.findOne({
+        phone: customerPhone,
+        hotelId: hotel._id,
+      });
 
-        await sendText(
-          customerPhone,
-          "👤 Connecting you with our team... please wait 😊",
-          phoneNumberId,
-          token,
-        );
-        return;
-      }
+      const bookingActive = freshChat?.bookingFlow?.active;
+      if (bookingActive) {
+        // Human request during booking
+        if (intent.type === "human") {
+          await Chat.findOneAndUpdate(
+            {
+              phone: customerPhone,
+              hotelId: hotel._id,
+            },
+            {
+              mode: "human",
+            },
+          );
 
-      // SHOW ROOMS
-      if (intent.type === "show_rooms") {
-        await sendRoomPhotos(customerPhone, phoneNumberId, token, hotel);
-        return;
-      }
-      // HOTEL QUESTION
-      if (intent.type === "hotel_question") {
-        const answer = await answerHotelQuestion(userMessage, hotel);
-
-        if (answer) {
-          await sendText(customerPhone, answer, phoneNumberId, token);
-        } else {
-          await sendButtons(
+          await sendText(
             customerPhone,
-            "I'm not able to answer that right now 😊 Would you like to talk with our team directly?",
-            [
-              { id: "talk_human", title: "👤 Talk to Human" },
-              { id: "menu_book", title: "🛏️ Book Room" },
-            ],
+            "👤 Connecting you with our team... please wait 😊",
             phoneNumberId,
             token,
           );
+
+          return;
         }
 
-        return;
-      }
+        // Show rooms during booking
+        if (intent.type === "show_rooms") {
+          await sendRoomPhotos(customerPhone, phoneNumberId, token, hotel);
 
-      // BOOKING FLOW
-      if (intent.type === "booking") {
+          await sendText(
+            customerPhone,
+            "😊 Shall we continue your booking?",
+            phoneNumberId,
+            token,
+          );
+          return;
+        }
+
+        // Hotel question during booking
+        if (intent.type === "hotel_question") {
+          const answer = await answerHotelQuestion(userMessage, hotel);
+
+          if (answer) {
+            await sendText(
+              customerPhone,
+              answer + "\n\n😊 Shall we continue your booking?",
+              phoneNumberId,
+              token,
+            );
+          } else {
+            await sendButtons(
+              customerPhone,
+              "I'm not able to answer that right now 😊 Would you like to talk with our team directly?",
+              [
+                { id: "talk_human", title: "👤 Talk to Human" },
+                { id: "menu_book", title: "🛏️ Book Room" },
+              ],
+              phoneNumberId,
+              token,
+            );
+          }
+
+          return;
+        }
+
+        // Otherwise continue booking normally
         return await handleSmartBooking(
           intent,
-          chat,
+          freshChat,
           customerPhone,
           phoneNumberId,
           token,
