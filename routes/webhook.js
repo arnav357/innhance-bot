@@ -1065,14 +1065,14 @@ _Ref: ${payment?.transactionNote || ""}_`;
     });
 
     if (interactiveId === "continue_bot") {
-   await sendText(
-     customerPhone,
-     "😊 Sure, please continue. How can I help you",
-     phoneNumberId,
-     token
-   );
-   return;
-}
+      await sendText(
+        customerPhone,
+        "😊 Sure, please continue. How can I help you",
+        phoneNumberId,
+        token,
+      );
+      return;
+    }
 
     if (interactiveId === "stay_human") {
       await sendText(
@@ -1234,7 +1234,32 @@ _Ref: ${payment?.transactionNote || ""}_`;
       `📩 [${hotel.name}] [${customerPhone}] "${userMessage}" | id: "${interactiveId}"`,
     );
 
-    const intent = await classifyIntent(userMessage);
+    let messageForIntent = userMessage;
+
+    // get fresh chat first
+    const freshChat = await Chat.findOne({
+      phone: customerPhone,
+      hotelId: hotel._id,
+    });
+
+    const bookingActive = freshChat?.bookingFlow?.active;
+    const currentMissing = bookingActive
+      ? getMissing(freshChat.bookingFlow.data || {})
+      : null;
+
+    // If waiting for guests and user typed only number
+    if (
+      bookingActive &&
+      currentMissing === "guests" &&
+      /^\d{1,2}$/.test(userMessage.trim())
+    ) {
+      const n = userMessage.trim();
+      messageForIntent = `${n} guest${n === "1" ? "" : "s"}`;
+    }
+
+    // classify smart message
+    const intent = await classifyIntent(messageForIntent);
+
     console.log("Intent:", intent);
 
     // if (
@@ -2102,7 +2127,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
             phoneNumberId,
             token,
             hotel,
-            customer
+            customer,
           );
         }
 
@@ -2186,6 +2211,20 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           customer,
         );
       }
+    }
+
+    if (intent.type === "unknown") {
+      await sendButtons(
+        customerPhone,
+        "😔 Sorry, I couldn't understand that properly.\nWould you like to talk with our team?",
+        [
+          { id: "talk_human", title: "👤 Talk to Human" },
+          { id: "continue_bot", title: "🤖 Continue with Bot" },
+        ],
+        phoneNumberId,
+        token,
+      );
+      return;
     }
 
     // ══════════════════════════════════════════════════════════
@@ -2443,10 +2482,7 @@ async function handleSmartBooking(
   // GUESTS FALLBACK
   // --------------------
 
-  if (
-  Object.keys(fields).length === 0 &&
-  currentMissing === "guests"
-) {
+  if (Object.keys(fields).length === 0 && currentMissing === "guests") {
     const guestMatch = msg.match(/\b(\d{1,2,3,4,5,6,7,8,9})\b/);
 
     if (guestMatch) {
