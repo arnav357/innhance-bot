@@ -1,3 +1,55 @@
+const express = require("express");
+const router = express.Router();
+const axios = require("axios");
+const OpenAI = require("openai");
+const QRCode = require("qrcode");
+const FormData = require("form-data");
+
+const Hotel = require("../models/Hotel");
+const Customer = require("../models/Customer");
+const Chat = require("../models/Chat");
+const Booking = require("../models/Booking");
+const Payment = require("../models/Payment");
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const sendHumanAlertEmail = require("../config/mail");
+const {
+  buildSystemPrompt,
+  normalizePhone,
+  buildUpiLink,
+  buildTransactionNote,
+  detectLanguage,
+  looksLikeQuestion,
+  detectInterruption,
+  askPendingStep,
+  classifyMessage,
+} = require("../components/webhookFunctions");
+const classifyIntent = require("../services/intentClassifier");
+const { mergeBooking, getMissing } = require("../services/bookEngine");
+
+
+async function getHistory(phone, hotelId) {
+  try {
+    const chat = await Chat.findOne({ phone, hotelId });
+    if (!chat?.messages?.length) return [];
+    return chat.messages
+      .filter(
+        (m) =>
+          typeof m.content === "string" &&
+          !m.content.startsWith("[") &&
+          m.content.trim().length > 0,
+      )
+      .slice(-40)
+      .map((m) => ({
+        role: m.role === "assistant" ? "assistant" : "user",
+        content: m.content,
+      }));
+  } catch (err) {
+    console.error("❌ getHistory error:", err.message);
+    return [];
+  }
+}
+
 async function saveMessage(phone, hotelId, customerId, role, content) {
   try {
     const time = new Date().toLocaleTimeString("en-US", {
