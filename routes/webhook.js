@@ -50,6 +50,30 @@ const FALLBACK_IMAGES = {
 // WHATSAPP SEND FUNCTIONS — all accept token param
 // ============================================================
 
+function parseDDMMYYYY(str) {
+  const parts = str.split(/[\/\-]/);
+
+  if (parts.length !== 3) return null;
+
+  let [day, month, year] = parts.map(Number);
+
+  // convert 2-digit year
+  if (year < 100) year += 2000;
+
+  const date = new Date(year, month - 1, day);
+
+  // strict validation
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
 async function sendText(to, message, phoneNumberId, token) {
   try {
     await axios.post(
@@ -2367,11 +2391,25 @@ async function handleSmartBooking(
   // --------------------
 
   // If classifier gives generic date
+
   if (fields.date) {
+    const parsedDate = parseDDMMYYYY(fields.date);
+
+    // invalid date
+    if (!parsedDate) {
+      await sendText(
+        customerPhone,
+        "📅 Please enter a valid date like 29/04/2026 😊",
+        phoneNumberId,
+        token,
+      );
+      return;
+    }
+
     if (!oldData.checkIn) {
-      fields.checkIn = fields.date;
+      fields.checkIn = parsedDate;
     } else if (!oldData.checkOut) {
-      fields.checkOut = fields.date;
+      fields.checkOut = parsedDate;
     }
 
     delete fields.date;
@@ -2391,6 +2429,28 @@ async function handleSmartBooking(
   );
 
   const missing = getMissing(data);
+
+  if (
+    data.checkIn &&
+    data.checkOut &&
+    new Date(data.checkOut) <= new Date(data.checkIn)
+  ) {
+    await Chat.findOneAndUpdate(
+      { phone: customerPhone, hotelId: hotel._id },
+      {
+        "bookingFlow.data.checkOut": null,
+      },
+    );
+
+    await sendText(
+      customerPhone,
+      "📅 Check-out must be after check-in date 😊 Please enter check-out again.",
+      phoneNumberId,
+      token,
+    );
+
+    return;
+  }
 
   if (missing === "roomType") {
     await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
