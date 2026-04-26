@@ -1,3 +1,34 @@
+async function saveMessage(phone, hotelId, customerId, role, content) {
+  try {
+    const time = new Date().toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    await Chat.updateOne(
+      { phone, hotelId },
+      {
+        $setOnInsert: {
+          phone,
+          hotelId,
+          name: "Guest " + String(phone).slice(-4),
+          avatar: "G",
+          // unread: 0,
+        },
+        $set: {
+          customerId,
+          lastMessage: String(content).substring(0, 120),
+          time: "Just now",
+        },
+        $push: { messages: { role, content, time } },
+        ...(role === "user" ? { $inc: { unread: 1 } } : {}),
+      },
+      { upsert: true },
+    );
+  } catch (err) {
+    console.error("❌ saveMessage error:", err.message);
+  }
+}
+
 async function getSmartReply(
   phone,
   hotelId,
