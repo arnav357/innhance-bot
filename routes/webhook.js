@@ -2317,9 +2317,25 @@ async function handleSmartBooking(
   hotel,
   customer,
 ) {
+
+
   let oldData = chat?.bookingFlow?.data || {};
 
-  let data = mergeBooking(oldData, intent.fields);
+  let fields = { ...intent.fields };
+
+  // If classifier gives generic date
+  if (fields.date) {
+
+    if (!oldData.checkIn) {
+      fields.checkIn = fields.date;
+    } else if (!oldData.checkOut) {
+      fields.checkOut = fields.date;
+    }
+
+    delete fields.date;
+  }
+
+  let data = mergeBooking(oldData, fields);
 
   await Chat.findOneAndUpdate(
     { phone: customerPhone, hotelId: hotel._id },
@@ -2421,7 +2437,9 @@ async function handleSmartBooking(
         (1000 * 60 * 60 * 24),
     ) || 1;
 
-  const room = hotel.rooms.find((r) => r.name === data.roomType);
+  const room = hotel.rooms.find(
+    (r) => r.name.toLowerCase() === data.roomType.toLowerCase()
+  );
 
   const total = (room?.price || 2500) * nights;
 
