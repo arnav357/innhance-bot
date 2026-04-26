@@ -47,14 +47,17 @@ const chatSchema = new mongoose.Schema(
     avatar: { type: String, default: "U" },
     messages: [messageSchema],
     bookingFlow: {
-      step: { type: String, default: null },
+      active: { type: Boolean, default: false },
+      source: { type: String, default: "button" }, // button or text
       awaitingResume: { type: Boolean, default: false },
+
       data: {
         name: String,
+        roomType: String,
         checkIn: Date,
         checkOut: Date,
         guests: Number,
-        roomType: String,
+        roomsCount: { type: Number, default: 1 },
       },
     },
     mode: {

@@ -24,6 +24,9 @@ const {
   askPendingStep,
   classifyMessage,
 } = require("../components/webhookFunctions");
+const classifyIntent = require("../services/intentClassifier");
+const { mergeBooking, getMissing } = require("../services/bookEngine");
+const answerHotelQuestion = require("../services/hotelKnowledge");
 
 // ============================================================
 // PLATFORM PAYMENT CONFIG
@@ -46,6 +49,7 @@ const FALLBACK_IMAGES = {
 // ============================================================
 // WHATSAPP SEND FUNCTIONS — all accept token param
 // ============================================================
+
 async function sendText(to, message, phoneNumberId, token) {
   try {
     await axios.post(
@@ -349,21 +353,21 @@ async function sendPaymentQR(to, phoneNumberId, token, booking, hotel) {
 
     const qrBuffer = await QRCode.toBuffer(upiLink, { width: 400, margin: 2 });
 
-    // await Payment.findOneAndUpdate(
-    //   { bookingId: booking._id },
-    //   {
-    //     hotelId: hotel._id,
-    //     hotelName: hotel.name,
-    //     bookingId: booking._id,
-    //     bookingRef,
-    //     customerPhone: booking.phone,
-    //     guestName: booking.guestName,
-    //     amount: booking.totalAmount,
-    //     transactionNote,
-    //     status: "pending",
-    //   },
-    //   { upsert: true, new: true },
-    // );
+    await Payment.findOneAndUpdate(
+      { bookingId: booking._id },
+      {
+        hotelId: hotel._id,
+        hotelName: hotel.name,
+        bookingId: booking._id,
+        bookingRef,
+        customerPhone: booking.phone,
+        guestName: booking.guestName,
+        amount: booking.totalAmount,
+        transactionNote,
+        status: "pending",
+      },
+      { upsert: true, new: true },
+    );
 
     const form = new FormData();
     form.append("image", qrBuffer.toString("base64"));
@@ -1087,7 +1091,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
       await sendHumanAlertEmail(hotel, customerPhone);
 
-      // ⏰ Auto check after 10 minutes
+      // ⏰ Auto check after 2 minutes
       setTimeout(
         async () => {
           try {
@@ -1196,26 +1200,29 @@ _Ref: ${payment?.transactionNote || ""}_`;
       `📩 [${hotel.name}] [${customerPhone}] "${userMessage}" | id: "${interactiveId}"`,
     );
 
-    if (
-      /human|agent|real person|baat karni|insaan|customer care/i.test(
-        userMessage,
-      )
-    ) {
-      await Chat.findOneAndUpdate(
-        { phone: customerPhone, hotelId: hotel._id },
-        { mode: "human" },
-        { upsert: true },
-      );
+    const intent = await classifyIntent(userMessage);
+    console.log("Intent:", intent);
 
-      await sendText(
-        customerPhone,
-        "👤 Connecting you to our team... Please wait 😊",
-        phoneNumberId,
-        token,
-      );
+    // if (
+    //   /human|agent|real person|baat karni|insaan|customer care/i.test(
+    //     userMessage,
+    //   )
+    // ) {
+    //   await Chat.findOneAndUpdate(
+    //     { phone: customerPhone, hotelId: hotel._id },
+    //     { mode: "human" },
+    //     { upsert: true },
+    //   );
 
-      return; // 🚨 VERY IMPORTANT
-    }
+    //   await sendText(
+    //     customerPhone,
+    //     "👤 Connecting you to our team... Please wait 😊",
+    //     phoneNumberId,
+    //     token,
+    //   );
+
+    //   return; // 🚨 VERY IMPORTANT
+    // }
 
     // const chat = await Chat.findOne({
     //   phone: customerPhone,
@@ -1254,16 +1261,18 @@ _Ref: ${payment?.transactionNote || ""}_`;
           {
             mode: "bot",
             status: "payment_expired",
-            bookingFlow: { step: null, data: {} },
-          },
+            bookingFlow: {
+              active: false,
+              data: {}
+            }
+          }
         );
 
         await sendButtons(
           customerPhone,
-          "⏰ Payment request expired.\nWhat would you like to do now? 😊",
+          "⏰ Payment link expired.\n\n✅ Your booking is still confirmed.\nWhat would you like to do now? 😊",
           [
             { id: "resend_qr", title: "🔁 Pay Again" },
-            { id: "menu_book", title: "🛏️ Book Room" },
             { id: "talk_human", title: "👤 Talk Human" },
           ],
           phoneNumberId,
@@ -1300,325 +1309,324 @@ _Ref: ${payment?.transactionNote || ""}_`;
       return;
     }
 
-    if (chat?.bookingFlow?.step) {
-      const flow = chat.bookingFlow;
+    //     if (chat?.bookingFlow?.step) {
+    //       const flow = chat.bookingFlow;
 
-      // ===================================
-      // 1. Waiting for continue confirmation
-      // ===================================
-      if (flow.awaitingResume) {
-        if (/^(yes|haan|ha|yeah|sure|ok|continue)$/i.test(userMessage.trim())) {
-          flow.awaitingResume = false;
-          await chat.save();
+    //       // ===================================
+    //       // 1. Waiting for continue confirmation
+    //       // ===================================
+    //       if (flow.awaitingResume) {
+    //         if (/^(yes|haan|ha|yeah|sure|ok|continue)$/i.test(userMessage.trim())) {
+    //           flow.awaitingResume = false;
+    //           await chat.save();
 
-          return await askPendingStep(
-            flow.step,
-            customerPhone,
-            phoneNumberId,
-            token,
-          );
-        }
+    //           return await askPendingStep(
+    //             flow.step,
+    //             customerPhone,
+    //             phoneNumberId,
+    //             token,
+    //           );
+    //         }
 
-        if (/^(no|later|cancel)$/i.test(userMessage.trim())) {
-          flow.awaitingResume = false;
-          await chat.save();
+    //         if (/^(no|later|cancel)$/i.test(userMessage.trim())) {
+    //           flow.awaitingResume = false;
+    //           await chat.save();
 
-          await sendText(
-            customerPhone,
-            "No problem 😊 Message me anytime to continue your booking.",
-            phoneNumberId,
-            token,
-          );
-          return;
-        }
+    //           await sendText(
+    //             customerPhone,
+    //             "No problem 😊 Message me anytime to continue your booking.",
+    //             phoneNumberId,
+    //             token,
+    //           );
+    //           return;
+    //         }
 
-        await sendText(
-          customerPhone,
-          "Would you like to continue your booking? 😊",
-          phoneNumberId,
-          token,
-        );
-        return;
-      }
+    //         await sendText(
+    //           customerPhone,
+    //           "Would you like to continue your booking? 😊",
+    //           phoneNumberId,
+    //           token,
+    //         );
+    //         return;
+    //       }
 
-      // ===================================
-      // 2. Detect interruption question
-      // ===================================
-      const cls = await classifyMessage(userMessage, flow.step);
+    //       // ===================================
+    //       // 2. Detect interruption question
+    //       // ===================================
+    //       const cls = await classifyMessage(userMessage, flow.step);
 
-      if (cls.type === "show_rooms") {
-        flow.awaitingResume = true;
-        await chat.save();
-        await sendRoomPhotos(customerPhone, phoneNumberId, token, hotel);
-        await sendText(customerPhone, "Here are the rooms images. Can I continue with my booking? 😊", phoneNumberId, token);
-        return;
-      }
+    //       if (cls.type === "show_rooms") {
+    //         flow.awaitingResume = true;
+    //         await chat.save();
+    //         await sendRoomPhotos(customerPhone, phoneNumberId, token, hotel);
+    //         await sendText(customerPhone, "Here are the rooms images. Can I continue with my booking? 😊", phoneNumberId, token);
+    //         return;
+    //       }
 
-      if (cls.type === "interruption_question" || cls.type === "pricing_query" || cls.type === "policy_query") { 
-        // GPT answer question + resume
-        flow.awaitingResume = true;
-        await chat.save();
+    //       if (cls.type === "interruption_question" || cls.type === "pricing_query" || cls.type === "policy_query") {
+    //         // GPT answer question + resume
+    //         flow.awaitingResume = true;
+    //         await chat.save();
 
-        const reply = await getSmartReply(
-          customerPhone,
-          hotel._id,
-          customer._id,
-          userMessage,
-          `
-            Customer is in active booking flow.
-            Current step: ${flow.step}
-            Known data: ${JSON.stringify(flow.data)}
+    //         const reply = await getSmartReply(
+    //           customerPhone,
+    //           hotel._id,
+    //           customer._id,
+    //           userMessage,
+    //           `
+    //             Customer is in active booking flow.
+    //             Current step: ${flow.step}
+    //             Known data: ${JSON.stringify(flow.data)}
 
-            Answer all questions warmly.
-            Then ask if customer wants to continue booking.
-`,
-          hotel,
-        );
+    //             Answer all questions warmly.
+    //             Then ask if customer wants to continue booking.
+    // `,
+    //           hotel,
+    //         );
 
-        await sendText(customerPhone, reply, phoneNumberId, token);
-        return;
-      }
+    //         await sendText(customerPhone, reply, phoneNumberId, token);
+    //         return;
+    //       }
 
-      if(cls.type==="human_request"){
-        flow.awaitingResume = true;
-        await chat.save();
-        await sendButtons(
-        customerPhone,
-        "Need more help?",
-        [
-          { id: "talk_human", title: "👤 Talk to Human" },
-          { id: "resume_booking", title: "🤖 Continue with Bot" },
-        ],
-        phoneNumberId,
-        token,
-      );
-      return;
-      }
-      
+    //       if(cls.type==="human_request"){
+    //         flow.awaitingResume = true;
+    //         await chat.save();
+    //         await sendButtons(
+    //         customerPhone,
+    //         "Need more help?",
+    //         [
+    //           { id: "talk_human", title: "👤 Talk to Human" },
+    //           { id: "resume_booking", title: "🤖 Continue with Bot" },
+    //         ],
+    //         phoneNumberId,
+    //         token,
+    //       );
+    //       return;
+    //       }
 
-//       if (isQuestion) {
-//         flow.awaitingResume = true;
-//         await chat.save();
+    // //       if (isQuestion) {
+    // //         flow.awaitingResume = true;
+    // //         await chat.save();
 
-//         const reply = await getSmartReply(
-//           customerPhone,
-//           hotel._id,
-//           customer._id,
-//           userMessage,
-//           `
-//             Customer is in active booking flow.
-//             Current step: ${flow.step}
-//             Known data: ${JSON.stringify(flow.data)}
+    // //         const reply = await getSmartReply(
+    // //           customerPhone,
+    // //           hotel._id,
+    // //           customer._id,
+    // //           userMessage,
+    // //           `
+    // //             Customer is in active booking flow.
+    // //             Current step: ${flow.step}
+    // //             Known data: ${JSON.stringify(flow.data)}
 
-//             Answer all questions warmly.
-//             Then ask if customer wants to continue booking.
-// `,
-//           hotel,
-//         );
+    // //             Answer all questions warmly.
+    // //             Then ask if customer wants to continue booking.
+    // // `,
+    // //           hotel,
+    // //         );
 
-//         await sendText(customerPhone, reply, phoneNumberId, token);
-//         return;
-//       }
+    // //         await sendText(customerPhone, reply, phoneNumberId, token);
+    // //         return;
+    // //       }
 
-      // ===================================
-      // 3. Normal booking step processing
-      // ===================================
+    //       // ===================================
+    //       // 3. Normal booking step processing
+    //       // ===================================
 
-      // STEP 1: NAME
-      if (flow.step === "ask_name") {
-        flow.data.name = userMessage;
-        flow.step = "ask_checkin";
+    //       // STEP 1: NAME
+    //       if (flow.step === "ask_name") {
+    //         flow.data.name = userMessage;
+    //         flow.step = "ask_checkin";
 
-        await chat.save();
+    //         await chat.save();
 
-        await sendText(
-          customerPhone,
-          "Nice to meet you! 😊 What's your check-in date? (DD/MM/YYYY)",
-          phoneNumberId,
-          token,
-        );
-        return;
-      }
+    //         await sendText(
+    //           customerPhone,
+    //           "Nice to meet you! 😊 What's your check-in date? (DD/MM/YYYY)",
+    //           phoneNumberId,
+    //           token,
+    //         );
+    //         return;
+    //       }
 
-      // STEP 2: CHECK-IN
-      if (flow.step === "ask_checkin") {
-        const checkIn = parseDate(userMessage);
+    //       // STEP 2: CHECK-IN
+    //       if (flow.step === "ask_checkin") {
+    //         const checkIn = parseDate(userMessage);
 
-        if (!checkIn) {
-          await sendText(
-            customerPhone,
-            "Please enter a valid date 😊",
-            phoneNumberId,
-            token,
-          );
-          return;
-        }
+    //         if (!checkIn) {
+    //           await sendText(
+    //             customerPhone,
+    //             "Please enter a valid date 😊",
+    //             phoneNumberId,
+    //             token,
+    //           );
+    //           return;
+    //         }
 
-        flow.data.checkIn = checkIn.toISOString();
-        flow.step = "ask_checkout";
+    //         flow.data.checkIn = checkIn.toISOString();
+    //         flow.step = "ask_checkout";
 
-        await chat.save();
+    //         await chat.save();
 
-        await sendText(
-          customerPhone,
-          "Got it 👍 Now your check-out date?",
-          phoneNumberId,
-          token,
-        );
-        return;
-      }
+    //         await sendText(
+    //           customerPhone,
+    //           "Got it 👍 Now your check-out date?",
+    //           phoneNumberId,
+    //           token,
+    //         );
+    //         return;
+    //       }
 
-      // STEP 3: CHECK-OUT
-      if (flow.step === "ask_checkout") {
-        const checkOut = parseDate(userMessage);
-        const checkIn = new Date(flow.data.checkIn);
+    //       // STEP 3: CHECK-OUT
+    //       if (flow.step === "ask_checkout") {
+    //         const checkOut = parseDate(userMessage);
+    //         const checkIn = new Date(flow.data.checkIn);
 
-        if (!checkOut) {
-          await sendText(
-            customerPhone,
-            "Please enter a valid future check-out date 😊",
-            phoneNumberId,
-            token,
-          );
-          return;
-        }
+    //         if (!checkOut) {
+    //           await sendText(
+    //             customerPhone,
+    //             "Please enter a valid future check-out date 😊",
+    //             phoneNumberId,
+    //             token,
+    //           );
+    //           return;
+    //         }
 
-        if (checkOut <= checkIn) {
-          await sendText(
-            customerPhone,
-            "Check-out must be after check-in 😊",
-            phoneNumberId,
-            token,
-          );
-          return;
-        }
+    //         if (checkOut <= checkIn) {
+    //           await sendText(
+    //             customerPhone,
+    //             "Check-out must be after check-in 😊",
+    //             phoneNumberId,
+    //             token,
+    //           );
+    //           return;
+    //         }
 
-        flow.data.checkOut = checkOut.toISOString();
-        flow.step = "ask_guests";
+    //         flow.data.checkOut = checkOut.toISOString();
+    //         flow.step = "ask_guests";
 
-        await chat.save();
+    //         await chat.save();
 
-        await sendText(customerPhone, "How many guests?", phoneNumberId, token);
-        return;
-      }
+    //         await sendText(customerPhone, "How many guests?", phoneNumberId, token);
+    //         return;
+    //       }
 
-      // STEP 4: GUESTS
-      if (flow.step === "ask_guests") {
-        const guests = parseInt(userMessage);
+    //       // STEP 4: GUESTS
+    //       if (flow.step === "ask_guests") {
+    //         const guests = parseInt(userMessage);
 
-        if (isNaN(guests) || guests <= 0) {
-          await sendText(
-            customerPhone,
-            "Please enter a valid number 😊",
-            phoneNumberId,
-            token,
-          );
-          return;
-        }
+    //         if (isNaN(guests) || guests <= 0) {
+    //           await sendText(
+    //             customerPhone,
+    //             "Please enter a valid number 😊",
+    //             phoneNumberId,
+    //             token,
+    //           );
+    //           return;
+    //         }
 
-        flow.data.guests = guests;
-        flow.step = "confirm";
+    //         flow.data.guests = guests;
+    //         flow.step = "confirm";
 
-        await chat.save();
+    //         await chat.save();
 
-        const checkIn = new Date(flow.data.checkIn);
-        const checkOut = new Date(flow.data.checkOut);
+    //         const checkIn = new Date(flow.data.checkIn);
+    //         const checkOut = new Date(flow.data.checkOut);
 
-        const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
-        const room = hotel.rooms.find((r) => r.name === flow.data.roomType);
+    //         const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+    //         const room = hotel.rooms.find((r) => r.name === flow.data.roomType);
 
-        if (!room) {
-          await sendText(
-            customerPhone,
-            "Sorry, selected room was not found ",
-            phoneNumberId,
-            token,
-          );
-          return;
-        }
+    //         if (!room) {
+    //           await sendText(
+    //             customerPhone,
+    //             "Sorry, selected room was not found ",
+    //             phoneNumberId,
+    //             token,
+    //           );
+    //           return;
+    //         }
 
-        const total = room.price * nights;
+    //         const total = room.price * nights;
 
-        await sendText(
-          customerPhone,
-          `📋 Booking Summary:\n\n👤 ${flow.data.name}\n🛏️ ${flow.data.roomType}\n📅 ${flow.data.checkIn.toDateString()} → ${flow.data.checkOut.toDateString()}\n👥 ${guests} guests\n💰 ₹${total}\n\nType *confirm* to proceed`,
-          phoneNumberId,
-          token,
-        );
+    //         await sendText(
+    //           customerPhone,
+    //           `📋 Booking Summary:\n\n👤 ${flow.data.name}\n🛏️ ${flow.data.roomType}\n📅 ${flow.data.checkIn.toDateString()} → ${flow.data.checkOut.toDateString()}\n👥 ${guests} guests\n💰 ₹${total}\n\nType *confirm* to proceed`,
+    //           phoneNumberId,
+    //           token,
+    //         );
 
-        return;
-      }
+    //         return;
+    //       }
 
-      // STEP 5: CONFIRM
-      if (flow.step === "confirm") {
-        if (!/confirm/i.test(userMessage)) {
-          await sendText(
-            customerPhone,
-            "Please type *confirm* to proceed 😊",
-            phoneNumberId,
-            token,
-          );
-          return;
-        }
+    //       // STEP 5: CONFIRM
+    //       if (flow.step === "confirm") {
+    //         if (!/confirm/i.test(userMessage)) {
+    //           await sendText(
+    //             customerPhone,
+    //             "Please type *confirm* to proceed 😊",
+    //             phoneNumberId,
+    //             token,
+    //           );
+    //           return;
+    //         }
 
-        const nights = Math.ceil(
-          (flow.data.checkOut - flow.data.checkIn) / (1000 * 60 * 60 * 24),
-        );
-        const room = hotel.rooms.find((r) => r.name === flow.data.roomType);
-        if (!room) {
-          await sendText(
-            customerPhone,
-            "Sorry, this room is not available 😔",
-            phoneNumberId,
-            token,
-          );
-          return;
-        }
-        const total = room.price * nights;
+    //         const nights = Math.ceil(
+    //           (flow.data.checkOut - flow.data.checkIn) / (1000 * 60 * 60 * 24),
+    //         );
+    //         const room = hotel.rooms.find((r) => r.name === flow.data.roomType);
+    //         if (!room) {
+    //           await sendText(
+    //             customerPhone,
+    //             "Sorry, this room is not available 😔",
+    //             phoneNumberId,
+    //             token,
+    //           );
+    //           return;
+    //         }
+    //         const total = room.price * nights;
 
-        await Booking.create({
-          hotelId: hotel._id,
-          customerId: customer._id,
-          guestName: flow.data.name,
-          phone: customerPhone,
-          checkIn: flow.data.checkIn,
-          checkOut: flow.data.checkOut,
-          roomType: flow.data.roomType,
-          numberOfGuests: flow.data.guests,
-          totalAmount: total,
-          status: "confirmed",
-        });
+    //         await Booking.create({
+    //           hotelId: hotel._id,
+    //           customerId: customer._id,
+    //           guestName: flow.data.name,
+    //           phone: customerPhone,
+    //           checkIn: flow.data.checkIn,
+    //           checkOut: flow.data.checkOut,
+    //           roomType: flow.data.roomType,
+    //           numberOfGuests: flow.data.guests,
+    //           totalAmount: total,
+    //           status: "confirmed",
+    //         });
 
-        // ✅ UPDATE CHAT STATUS (CHANGE 3)
-        await Chat.findOneAndUpdate(
-          { phone: customerPhone, hotelId: hotel._id },
-          {
-            status: "booked",
-            bookingFlow: { step: null, data: {} },
-          },
-        );
+    //         // ✅ UPDATE CHAT STATUS (CHANGE 3)
+    //         await Chat.findOneAndUpdate(
+    //           { phone: customerPhone, hotelId: hotel._id },
+    //           {
+    //             status: "booked",
+    //             bookingFlow: { step: null, data: {} },
+    //           },
+    //         );
 
-        await sendText(
-          customerPhone,
-          "🎉 Booking created! Now choose payment method.",
-          phoneNumberId,
-          token,
-        );
+    //         await sendText(
+    //           customerPhone,
+    //           "🎉 Booking created! Now choose payment method.",
+    //           phoneNumberId,
+    //           token,
+    //         );
 
-        await sendButtons(
-          customerPhone,
-          "How would you like to pay?",
-          [
-            { id: "pay_qr", title: "Pay via QR" },
-            { id: "pay_desk", title: "Pay at Desk" },
-          ],
-          phoneNumberId,
-          token,
-        );
+    //         await sendButtons(
+    //           customerPhone,
+    //           "How would you like to pay?",
+    //           [
+    //             { id: "pay_qr", title: "Pay via QR" },
+    //             { id: "pay_desk", title: "Pay at Desk" },
+    //           ],
+    //           phoneNumberId,
+    //           token,
+    //         );
 
-        return;
-      }
-    }
+    //         return;
+    //       }
+    //     }
 
     // ══════════════════════════════════════════════════════════
     // HANDLER 1: "paid" text → ask for screenshot
@@ -1873,12 +1881,12 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       return;
     }
 
-    if (interactiveId === "resume_booking") {
-      flow.awaitingResume = false;
-      await chat.save();
+    // if (interactiveId === "resume_booking") {
+    //   flow.awaitingResume = false;
+    //   await chat.save();
 
-      return await askPendingStep(flow.step, customerPhone, phoneNumberId, token);
-    }
+    //   return await askPendingStep(flow.step, customerPhone, phoneNumberId, token);
+    // }
 
     // ── Room selected from menu (dynamic room IDs) ────────────
     if (interactiveId.startsWith("room_custom_")) {
@@ -1900,15 +1908,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       await Chat.findOneAndUpdate(
         { phone: customerPhone, hotelId: hotel._id },
         {
-          status: "booking_in_progress",
           bookingFlow: {
-            step: "ask_name",
+            active: true,
             data: {
               roomType: roomConfig.name,
             },
           },
+          status: "booking_in_progress",
         },
-        { upsert: true, returnDocument: "after" },
       );
 
       await sendText(
@@ -1946,6 +1953,51 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       return;
     }
 
+    if (interactiveId === "pay_qr") {
+
+ const booking = await Booking.findOne({
+   phone: { $in:[normalizedPhone, customerPhone] },
+   hotelId: hotel._id,
+   status: "confirmed"
+ }).sort({ createdAt:-1 });
+
+ if (!booking) {
+   await sendText(
+     customerPhone,
+     "No confirmed booking found 😊",
+     phoneNumberId,
+     token
+   );
+   return;
+ }
+
+ let payment = await Payment.findOne({
+   bookingId: booking._id,
+   status: "pending"
+ });
+
+ if (!payment) {
+   const bookingRef = booking._id.toString().slice(-6).toUpperCase();
+
+   payment = await Payment.create({
+     hotelId: hotel._id,
+     hotelName: hotel.name,
+     bookingId: booking._id,
+     bookingRef,
+     customerPhone,
+     guestName: booking.guestName,
+     amount: booking.totalAmount,
+     transactionNote: `HOTEL-${hotel.shortCode}-BOOK-${bookingRef}`,
+     status: "pending",
+     reminderCount: 0,
+     expiresAt: new Date(Date.now() + 15 * 60 * 1000)
+   });
+ }
+
+ await sendPaymentQR(customerPhone, phoneNumberId, token, booking, hotel);
+ return;
+}
+
     // ── Fallback default room IDs ─────────────────────────────
     if (
       ["room_standard", "room_deluxe", "room_suite"].includes(interactiveId)
@@ -1978,6 +2030,64 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       );
       await sendText(customerPhone, reply, phoneNumberId, token);
       return;
+    }
+
+    if (message.type === "text") {
+      // HUMAN REQUEST
+      if (intent.type === "human") {
+        await Chat.findOneAndUpdate(
+          { phone: customerPhone, hotelId: hotel._id },
+          { mode: "human" },
+        );
+
+        await sendText(
+          customerPhone,
+          "👤 Connecting you with our team... please wait 😊",
+          phoneNumberId,
+          token,
+        );
+        return;
+      }
+
+      // SHOW ROOMS
+      if (intent.type === "show_rooms") {
+        await sendRoomPhotos(customerPhone, phoneNumberId, token, hotel);
+        return;
+      }
+      // HOTEL QUESTION
+      if (intent.type === "hotel_question") {
+        const answer = await answerHotelQuestion(userMessage, hotel);
+
+        if (answer) {
+          await sendText(customerPhone, answer, phoneNumberId, token);
+        } else {
+          await sendButtons(
+            customerPhone,
+            "I'm not able to answer that right now 😊 Would you like to talk with our team directly?",
+            [
+              { id: "talk_human", title: "👤 Talk to Human" },
+              { id: "menu_book", title: "🛏️ Book Room" },
+            ],
+            phoneNumberId,
+            token,
+          );
+        }
+
+        return;
+      }
+
+      // BOOKING FLOW
+      if (intent.type === "booking") {
+        return await handleSmartBooking(
+          intent,
+          chat,
+          customerPhone,
+          phoneNumberId,
+          token,
+          hotel,
+          customer,
+        );
+      }
     }
 
     // ══════════════════════════════════════════════════════════
@@ -2155,3 +2265,170 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
 });
 
 module.exports = router;
+
+async function handleSmartBooking(
+  intent,
+  chat,
+  customerPhone,
+  phoneNumberId,
+  token,
+  hotel,
+  customer,
+) {
+  let oldData = chat?.bookingFlow?.data || {};
+
+  let data = mergeBooking(oldData, intent.fields);
+
+  await Chat.findOneAndUpdate(
+    { phone: customerPhone, hotelId: hotel._id },
+    {
+      bookingFlow: {
+        active: true,
+        data,
+      },
+      status: "booking_in_progress",
+    },
+  );
+
+  const missing = getMissing(data);
+
+  if (missing === "roomType") {
+    await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
+    return;
+  }
+
+  if (missing === "checkIn") {
+    await sendText(
+      customerPhone,
+      "📅 What is your check-in date? 😊",
+      phoneNumberId,
+      token,
+    );
+    return;
+  }
+
+  if (missing === "checkOut") {
+    await sendText(
+      customerPhone,
+      "📅 What is your check-out date? 😊",
+      phoneNumberId,
+      token,
+    );
+    return;
+  }
+
+  if (missing === "guests") {
+    await sendText(
+      customerPhone,
+      "👥 How many guests? 😊",
+      phoneNumberId,
+      token,
+    );
+    return;
+  }
+
+  if (missing === "name") {
+    await sendText(
+      customerPhone,
+      "😊 May I know your full name?",
+      phoneNumberId,
+      token,
+    );
+    return;
+  }
+
+  // ALL DATA COMPLETE -> CREATE BOOKING
+
+  const existingBooking = await Booking.findOne({
+    phone: { $in: [customerPhone, normalizePhone(customerPhone)] },
+    hotelId: hotel._id,
+    status: "confirmed",
+  }).sort({ createdAt: -1 });
+
+  if (existingBooking) {
+    const createdAgo =
+      Date.now() - new Date(existingBooking.createdAt).getTime();
+
+    // within last 30 minutes
+    if (createdAgo < 30 * 60 * 1000) {
+      await sendText(
+        customerPhone,
+        "😊 Your booking is already ready. Please choose payment method.",
+        phoneNumberId,
+        token,
+      );
+
+      await sendButtons(
+        customerPhone,
+        "How would you like to pay?",
+        [
+          { id: "pay_qr", title: "💳 Pay QR" },
+          { id: "pay_desk", title: "🏨 Pay at Desk" },
+        ],
+        phoneNumberId,
+        token,
+      );
+
+      return;
+    }
+  }
+
+  const nights =
+    Math.ceil(
+      (new Date(data.checkOut) - new Date(data.checkIn)) /
+        (1000 * 60 * 60 * 24),
+    ) || 1;
+
+  const room = hotel.rooms.find((r) => r.name === data.roomType);
+
+  const total = (room?.price || 2500) * nights;
+
+  const booking = await Booking.create({
+    hotelId: hotel._id,
+    customerId: customer._id,
+    guestName: data.name,
+    phone: customerPhone,
+    checkIn: new Date(data.checkIn),
+    checkOut: new Date(data.checkOut),
+    roomType: data.roomType,
+    numberOfGuests: data.guests,
+    totalAmount: total,
+    status: "confirmed",
+    source: "whatsapp",
+  });
+
+  await Chat.findOneAndUpdate(
+    { phone: customerPhone, hotelId: hotel._id },
+    {
+      status: "awaiting_confirmation",
+      bookingFlow: { active: false, data: {} },
+    },
+  );
+
+  await sendText(
+    customerPhone,
+    `🎉 Booking Ready!
+
+👤 ${data.name}
+🛏️ ${data.roomType}
+📅 ${new Date(data.checkIn).toDateString()}
+📅 ${new Date(data.checkOut).toDateString()}
+👥 ${data.guests} Guests
+💰 ₹${total}
+
+Choose payment method 😊`,
+    phoneNumberId,
+    token,
+  );
+
+  await sendButtons(
+    customerPhone,
+    "How would you like to pay?",
+    [
+      { id: "pay_qr", title: "💳 Pay QR" },
+      { id: "pay_desk", title: "🏨 Pay at Desk" },
+    ],
+    phoneNumberId,
+    token,
+  );
+}
