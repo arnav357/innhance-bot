@@ -2040,22 +2040,23 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       const bookingActive = freshChat?.bookingFlow?.active;
       if (bookingActive) {
         const continueWords =
-        /^(yes|yep|yeah|haan|ha|hmm|ok|okay|sure|continue|go ahead|proceed)$/i;
+          /^(yes|yep|yeah|haan|ha|hmm|ok|okay|sure|continue|go ahead|proceed)$/i;
 
-      if (
-        intent.type === "command" &&
-        continueWords.test(userMessage.trim())
-      ) {
-        return await handleSmartBooking(
-          { type: "booking", fields: {} },
-          freshChat,
-          customerPhone,
-          phoneNumberId,
-          token,
-          hotel,
-          customer
-        );
-      }
+        if (
+          intent.type === "command" &&
+          continueWords.test(userMessage.trim())
+        ) {
+          return await handleSmartBooking(
+            { type: "booking", fields: {} },
+            userMessage,
+            freshChat,
+            customerPhone,
+            phoneNumberId,
+            token,
+            hotel,
+            customer,
+          );
+        }
 
         // Human request during booking
         if (intent.type === "human") {
@@ -2094,7 +2095,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
 
         // Hotel question during booking
         if (intent.type === "hotel_question") {
-          const answer = await answerHotelQuestion(userMessage, hotel,customerPhone,customer?._id,freshChat?.bookingFlow);
+          const answer = await answerHotelQuestion(
+            userMessage,
+            hotel,
+            customerPhone,
+            customer?._id,
+            freshChat?.bookingFlow,
+          );
 
           if (answer) {
             await sendText(
@@ -2122,6 +2129,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         // Otherwise continue booking normally
         return await handleSmartBooking(
           intent,
+          userMessage,
           freshChat,
           customerPhone,
           phoneNumberId,
@@ -2310,6 +2318,7 @@ module.exports = router;
 
 async function handleSmartBooking(
   intent,
+  userMessage,
   chat,
   customerPhone,
   phoneNumberId,
@@ -2317,15 +2326,48 @@ async function handleSmartBooking(
   hotel,
   customer,
 ) {
-
-
   let oldData = chat?.bookingFlow?.data || {};
 
   let fields = { ...intent.fields };
 
+  // --------------------
+  // SMART NAME FALLBACK
+  // --------------------
+
+  const msg = userMessage.trim();
+  const currentMissing = getMissing(oldData);
+
+  const looksLikeQuestion =
+    /hai|\?|parking|lift|wifi|breakfast|price|room|available/i.test(msg);
+
+  const looksLikeName = /^[A-Za-z]+(?:\s+[A-Za-z]+){0,3}$/.test(msg);
+
+  if (
+    Object.keys(fields).length === 0 &&
+    currentMissing === "name" &&
+    looksLikeName &&
+    !looksLikeQuestion
+  ) {
+    fields.name = msg;
+  }
+
+  // --------------------
+  // DATE FALLBACK
+  // --------------------
+
+  if (
+    Object.keys(fields).length === 0 &&
+    /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(msg)
+  ) {
+    fields.date = msg;
+  }
+
+  // --------------------
+  // DATE MAPPING
+  // --------------------
+
   // If classifier gives generic date
   if (fields.date) {
-
     if (!oldData.checkIn) {
       fields.checkIn = fields.date;
     } else if (!oldData.checkOut) {
@@ -2438,7 +2480,7 @@ async function handleSmartBooking(
     ) || 1;
 
   const room = hotel.rooms.find(
-    (r) => r.name.toLowerCase() === data.roomType.toLowerCase()
+    (r) => r.name.toLowerCase() === data.roomType.toLowerCase(),
   );
 
   const total = (room?.price || 2500) * nights;

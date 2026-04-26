@@ -24,21 +24,64 @@ greeting
 unknown
 command
 
-If booking is already active and user sends:
-Deluxe / Suite / Standard (any room type name) then classify as: booking
+Rules:
 
-If booking is already active and user sends something like:
-Yes / Yes continue the bookinig / hmm / haan then classify as: command
+1. If user wants room / stay / reserve / book:
+type = booking
 
-NOT show_rooms
+2. If user sends room type only:
+Deluxe / Suite / Standard / Super Deluxe
+type = booking
+fields.roomType = detected room name
 
-Understand Hinglish:
+3. If user sends only a person name:
+Arun Roy / Rahul / Amit Kumar
+type = booking
+fields.name = full text
+
+4. If user sends only date:
+29/04/2026 or 29-04-2026
+type = booking
+fields.date = exact text
+
+5. If user sends guest count:
+2 guests
+2 log
+hum 3 hai
+type = booking
+fields.guests = number
+
+6. If user says yes/haan/ok/continue/proceed:
+type = command
+
+7. If asks photos/images:
+type = show_rooms
+
+8. If asks payment/qr/upi:
+type = payment
+
+9. If asks human/staff/call:
+type = human
+
+10. If asks hotel facilities/questions:
+parking?
+lift hai?
+wifi?
+breakfast?
+type = hotel_question
+
+11. Understand Hinglish:
 kal = tomorrow
 parso = day after tomorrow
 2 log = 2 guests
 room chahiye = booking
 photo bhejo = show_rooms
-baat karni hai = human request
+baat karni hai = human
+
+12. If unsure:
+type = unknown
+
+RETURN JSON only.
 `;
 
  const res = await openai.chat.completions.create({
