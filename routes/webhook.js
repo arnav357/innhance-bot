@@ -2076,7 +2076,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
 
         // Hotel question during booking
         if (intent.type === "hotel_question") {
-          const answer = await answerHotelQuestion(userMessage, hotel);
+          const answer = await answerHotelQuestion(userMessage, hotel,customerPhone,customer?._id,freshChat?.bookingFlow);
 
           if (answer) {
             await sendText(
