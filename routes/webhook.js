@@ -1361,7 +1361,9 @@ _Ref: ${payment?.transactionNote || ""}_`;
     if (!intent && bookingActive && currentMissing === "guests") {
       const match = userMessage
         .trim()
-        .match(/^(\d{1,2})(?:\s*(guest|guests|adult|adults|people|peoples|log))?$/i);
+        .match(
+          /^(\d{1,2})(?:\s*(guest|guests|adult|adults|people|peoples|log))?$/i,
+        );
 
       if (match) {
         intent = {
@@ -2531,7 +2533,12 @@ async function handleSmartBooking(
   hotel,
   customer,
 ) {
-  let oldData = chat?.bookingFlow?.data || {};
+  const latestChat = await Chat.findOne({
+    phone: customerPhone,
+    hotelId: hotel._id,
+  });
+
+  let oldData = latestChat?.bookingFlow?.data || {};
 
   let fields = { ...intent.fields };
 
@@ -2541,6 +2548,10 @@ async function handleSmartBooking(
 
   const msg = userMessage.trim();
   const currentMissing = getMissing(oldData);
+
+  console.log("OLD DATA:", oldData);
+  console.log("CURRENT MISSING:", currentMissing);
+  console.log("FIELDS FROM INTENT:", fields);
 
   const looksLikeQuestion =
     /hai|\?|parking|lift|wifi|breakfast|price|room|available/i.test(msg);
@@ -2793,7 +2804,7 @@ async function handleSmartBooking(
     return;
   }
 
-  const total = (room?.price || 2500) * nights * data.rooms;
+  const total = (room?.price || 2500) * nights * data.roomsCount;
 
   const booking = await Booking.create({
     hotelId: hotel._id,
@@ -2826,6 +2837,7 @@ async function handleSmartBooking(
 🛏️ ${data.roomType}
 📅 ${new Date(data.checkIn).toDateString()}
 📅 ${new Date(data.checkOut).toDateString()}
+🏨 ${data.roomsCount} Rooms
 👥 ${data.guests} Guests
 💰 ₹${total}
 
