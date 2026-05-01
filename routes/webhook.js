@@ -1326,18 +1326,18 @@ _Ref: ${payment?.transactionNote || ""}_`;
       ? getMissing(freshChat.bookingFlow.data || {})
       : null;
 
-    // If waiting for guests and user typed only number
-    if (bookingActive && /^\d{1,2}$/.test(userMessage.trim())) {
-      const n = userMessage.trim();
+    // // If waiting for guests and user typed only number
+    // if (bookingActive && /^\d{1,2}$/.test(userMessage.trim())) {
+    //   const n = userMessage.trim();
 
-      if (currentMissing === "guests") {
-        messageForIntent = `${n} guest${n === "1" ? "" : "s"}`;
-      }
+    //   if (currentMissing === "guests") {
+    //     messageForIntent = `${n} guest${n === "1" ? "" : "s"}`;
+    //   }
 
-      if (currentMissing === "roomsCount") {
-        messageForIntent = `${n} room${n === "1" ? "" : "s"}`;
-      }
-    }
+    //   if (currentMissing === "roomsCount") {
+    //     messageForIntent = `${n} room${n === "1" ? "" : "s"}`;
+    //   }
+    // }
 
     let intent;
 
