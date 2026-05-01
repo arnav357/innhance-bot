@@ -1064,6 +1064,85 @@ _Ref: ${payment?.transactionNote || ""}_`;
       phone: customerPhone,
     });
 
+    if (interactiveId === "rooms_accept") {
+      const freshChat = await Chat.findOne({
+        phone: customerPhone,
+        hotelId: hotel._id,
+      });
+
+      if (!freshChat?.bookingFlow?.active) {
+        await sendText(
+          customerPhone,
+          "Please start a booking first 😊",
+          phoneNumberId,
+          token,
+        );
+        return;
+      }
+
+      const data = freshChat.bookingFlow.data || {};
+
+      const room = hotel.rooms.find(
+        (r) => r.name.toLowerCase() === data.roomType?.toLowerCase(),
+      );
+
+      if (!room) {
+        await sendText(
+          customerPhone,
+          "Selected room type not found 😊",
+          phoneNumberId,
+          token,
+        );
+        return;
+      }
+
+      const maxGuests = room.maximumGuests || 2;
+      const neededRooms = Math.ceil(data.guests / maxGuests);
+
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        {
+          "bookingFlow.data.roomsCount": neededRooms,
+        },
+      );
+
+      await sendText(
+        customerPhone,
+        `✅ Updated to ${neededRooms} rooms.`,
+        phoneNumberId,
+        token,
+      );
+
+      const updatedChat = await Chat.findOne({
+        phone: customerPhone,
+        hotelId: hotel._id,
+      });
+
+      const missing = getMissing(updatedChat.bookingFlow.data);
+
+      if (missing === "name") {
+        await sendText(
+          customerPhone,
+          "😊 May I know your full name?",
+          phoneNumberId,
+          token,
+        );
+        return;
+      }
+
+      // if complete, continue booking engine
+      return await handleSmartBooking(
+        { type: "booking", fields: {} },
+        "",
+        updatedChat,
+        customerPhone,
+        phoneNumberId,
+        token,
+        hotel,
+        customer,
+      );
+    }
+
     if (interactiveId === "continue_bot") {
       await sendText(
         customerPhone,
@@ -1250,15 +1329,21 @@ _Ref: ${payment?.transactionNote || ""}_`;
     // If waiting for guests and user typed only number
     if (
       bookingActive &&
-      currentMissing === "guests" &&
       /^\d{1,2}$/.test(userMessage.trim())
     ) {
       const n = userMessage.trim();
-      messageForIntent = `${n} guest${n === "1" ? "" : "s"}`;
+
+      if (currentMissing === "guests") {
+        messageForIntent = `${n} guest${n === "1" ? "" : "s"}`;
+      }
+
+      if (currentMissing === "roomsCount") {
+        messageForIntent = `${n} room${n === "1" ? "" : "s"}`;
+      }
     }
 
     // classify smart message
-    const intent = await classifyIntent(messageForIntent);
+    const intent = await classifyIntent(messageForIntent,currentMissing);
 
     console.log("Intent:", intent);
 
@@ -2479,6 +2564,22 @@ async function handleSmartBooking(
   }
 
   // --------------------
+  // ROOMS FALLBACK
+  // --------------------
+
+  if (Object.keys(fields).length === 0 && currentMissing === "roomsCount") {
+    const roomMatch = msg.match(/\b(\d{1,2})\b/);
+
+    if (roomMatch) {
+      const num = parseInt(roomMatch[1]);
+
+      if (num >= 1 && num <= 10) {
+        fields.roomsCount = num;
+      }
+    }
+  }
+
+  // --------------------
   // GUESTS FALLBACK
   // --------------------
 
@@ -2556,6 +2657,16 @@ async function handleSmartBooking(
     return;
   }
 
+  if (missing === "roomsCount") {
+    await sendText(
+      customerPhone,
+      "🏨 How many rooms would you like? 😊",
+      phoneNumberId,
+      token,
+    );
+    return;
+  }
+
   if (missing === "guests") {
     await sendText(
       customerPhone,
@@ -2622,7 +2733,34 @@ async function handleSmartBooking(
     (r) => r.name.toLowerCase() === data.roomType.toLowerCase(),
   );
 
-  const total = (room?.price || 2500) * nights;
+  const maxGuestsPerRoom = room?.maximumGuests || 2;
+  const totalCapacity = maxGuestsPerRoom * data.roomsCount;
+
+  if (data.guests > totalCapacity) {
+    const neededRooms = Math.ceil(data.guests / maxGuestsPerRoom);
+
+    await Chat.findOneAndUpdate(
+      { phone: customerPhone, hotelId: hotel._id },
+      {
+        "bookingFlow.data.roomsCount": neededRooms,
+      },
+    );
+
+    await sendButtons(
+      customerPhone,
+      `😊 ${data.roomType} allows up to ${maxGuestsPerRoom} guests per room.\n\nFor ${data.guests} guests, you'll need at least ${neededRooms} rooms.`,
+      [
+        { id: "rooms_accept", title: `✅ ${neededRooms} Rooms` },
+        { id: "menu_rooms", title: "🔁 Change Room Type" },
+      ],
+      phoneNumberId,
+      token,
+    );
+
+    return;
+  }
+
+  const total = (room?.price || 2500) * nights * data.rooms;
 
   const booking = await Booking.create({
     hotelId: hotel._id,
@@ -2632,6 +2770,7 @@ async function handleSmartBooking(
     checkIn: new Date(data.checkIn),
     checkOut: new Date(data.checkOut),
     roomType: data.roomType,
+    numberOfRooms: data.rooms,
     numberOfGuests: data.guests,
     totalAmount: total,
     status: "confirmed",

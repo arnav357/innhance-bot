@@ -50,7 +50,6 @@ const chatSchema = new mongoose.Schema(
       active: { type: Boolean, default: false },
       source: { type: String, default: "button" }, // button or text
       awaitingResume: { type: Boolean, default: false },
-
       data: {
         name: String,
         roomType: String,

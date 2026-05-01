@@ -12,6 +12,7 @@ function getMissing(data){
  if(!data.roomType) return "roomType";
  if(!data.checkIn) return "checkIn";
  if(!data.checkOut) return "checkOut";
+ if(!data.roomsCount) return "rooms";
  if(!data.guests) return "guests";
  if(!data.name) return "name";
 

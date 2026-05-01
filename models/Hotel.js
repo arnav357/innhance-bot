@@ -23,6 +23,7 @@ const hotelSchema = new mongoose.Schema({
       price:          { type: Number },
       totalRooms:     { type: Number },
       availableRooms: { type: Number },
+      maximumGuests:  { type: Number },
       description:    { type: String },
       amenities:      [{ type: String }],
       images:         [{ type: String }],

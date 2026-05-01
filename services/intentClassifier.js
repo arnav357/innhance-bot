@@ -1,9 +1,9 @@
 const OpenAI = require("openai");
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-async function classifyIntent(message){
+async function classifyIntent(message, currentMissing = null) {
 
- const prompt = `
+const prompt = `
 Return ONLY JSON:
 
 {
@@ -23,6 +23,8 @@ human
 greeting
 unknown
 command
+
+Current missing booking field: ${currentMissing || "none"}
 
 Rules:
 
@@ -44,65 +46,67 @@ fields.name = full text
 type = booking
 fields.date = exact text
 
-5. If user sends guest count:
+5. If user says:
 2 guests
-2 log
-hum 3 hai
+3 log
+hum 4 hai
 type = booking
 fields.guests = number
 
-6. If booking is active and user sends only a number like:
+6. If user sends only a number:
 1
 2
 3
-AND the current missing field is guests:
+
+If current missing booking field = roomsCount:
+type = booking
+fields.roomsCount = number
+
+If current missing booking field = guests:
 type = booking
 fields.guests = number
 
-6. If user says yes/haan/ok/continue/proceed:
+7. If user says yes/haan/ok/continue/proceed:
 type = command
 
-7. If asks photos/images:
+8. If asks photos/images:
 type = show_rooms
 
-8. If asks payment/qr/upi:
+9. If asks payment/qr/upi:
 type = payment
 
-9. If asks human/staff/call:
+10. If asks human/staff/call:
 type = human
 
-10. If asks hotel facilities/questions:
+11. If asks hotel facilities:
 parking?
-lift hai?
 wifi?
+lift?
 breakfast?
 type = hotel_question
 
-11. Understand Hinglish:
-kal = tomorrow
-parso = day after tomorrow
+12. Understand Hinglish:
 2 log = 2 guests
 room chahiye = booking
 photo bhejo = show_rooms
-baat karni hai = human
 
-12. If unsure:
+13. If unsure:
 type = unknown
 
 RETURN JSON only.
 `;
 
  const res = await openai.chat.completions.create({
-   model:"gpt-4o",
-   temperature:0,
-   messages:[
-    {role:"system",content:prompt},
-    {role:"user",content:message}
+   model: "gpt-4o",
+   temperature: 0,
+   messages: [
+     { role: "system", content: prompt },
+     { role: "user", content: message }
    ]
  });
 
  return JSON.parse(
-   res.choices[0].message.content.replace(/```json|```/g,"")
+   res.choices[0].message.content.replace(/```json|```/g, "")
  );
 }
 
