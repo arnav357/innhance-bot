@@ -2760,6 +2760,7 @@ async function handleSmartBooking(
     return;
   }
 
+  
   const total = (room?.price || 2500) * nights * data.rooms;
 
   const booking = await Booking.create({
@@ -2770,7 +2771,7 @@ async function handleSmartBooking(
     checkIn: new Date(data.checkIn),
     checkOut: new Date(data.checkOut),
     roomType: data.roomType,
-    numberOfRooms: data.rooms,
+    numberOfRooms: data.roomsCount,
     numberOfGuests: data.guests,
     totalAmount: total,
     status: "confirmed",
