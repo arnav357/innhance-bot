@@ -167,9 +167,7 @@ ${hotel.whatsappNumber || "Available at front desk"}`;
 // ============================================================
 
 function normalizePhone(phone) {
-  let p = String(phone).replace(/\D/g, "");
-  if (p.startsWith("91") && p.length === 12) p = p.slice(2);
-  return p;
+  return String(phone).replace(/\D/g, "");
 }
 
 function buildUpiLink(amount, transactionNote, upiId, upiName) {

@@ -838,12 +838,12 @@ router.post("/", async (req, res) => {
     const message = value.messages[0];
     const phoneNumberId = value.metadata?.phone_number_id;
     const customerPhone = message.from;
-
+    console.log("Customer phone: ", customerPhone);
     if (customerPhone === phoneNumberId) return;
 
     // Skip stale messages older than 30s
     const msgTime = parseInt(message.timestamp) * 1000;
-    if (Date.now() - msgTime > 30000) {
+    if (Date.now() - msgTime > 180000) {
       console.log("⏩ Skipping stale message from", customerPhone);
       return;
     }
