@@ -55,8 +55,8 @@ const chatSchema = new mongoose.Schema(
         roomType: String,
         checkIn: Date,
         checkOut: Date,
+        roomsCount: Number,
         guests: Number,
-        roomsCount: { type: Number, default: 1 },
       },
     },
     mode: {
