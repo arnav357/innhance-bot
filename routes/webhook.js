@@ -1327,10 +1327,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
       : null;
 
     // If waiting for guests and user typed only number
-    if (
-      bookingActive &&
-      /^\d{1,2}$/.test(userMessage.trim())
-    ) {
+    if (bookingActive && /^\d{1,2}$/.test(userMessage.trim())) {
       const n = userMessage.trim();
 
       if (currentMissing === "guests") {
@@ -1342,11 +1339,44 @@ _Ref: ${payment?.transactionNote || ""}_`;
       }
     }
 
-    // classify smart message
-    const intent = await classifyIntent(messageForIntent,currentMissing);
+    let intent;
 
-    console.log("Intent:", intent);
+    // ROOMS COUNT deterministic
+    if (bookingActive && currentMissing === "roomsCount") {
+      const match = userMessage.trim().match(/^(\d{1,2})(?:\s*room[s]?)?$/i);
 
+      if (match) {
+        intent = {
+          type: "booking",
+          confidence: 1,
+          fields: {
+            roomsCount: parseInt(match[1]),
+          },
+        };
+      }
+    }
+
+    // GUESTS deterministic
+    if (!intent && bookingActive && currentMissing === "guests") {
+      const match = userMessage
+        .trim()
+        .match(/^(\d{1,2})(?:\s*(guest|guests|adult|adults|people|peoples|log))?$/i);
+
+      if (match) {
+        intent = {
+          type: "booking",
+          confidence: 1,
+          fields: {
+            guests: parseInt(match[1]),
+          },
+        };
+      }
+    }
+
+    // fallback GPT
+    if (!intent) {
+      intent = await classifyIntent(messageForIntent, currentMissing);
+    }
     // if (
     //   /human|agent|real person|baat karni|insaan|customer care/i.test(
     //     userMessage,
@@ -2760,7 +2790,6 @@ async function handleSmartBooking(
     return;
   }
 
-  
   const total = (room?.price || 2500) * nights * data.rooms;
 
   const booking = await Booking.create({
