@@ -1353,6 +1353,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
             roomsCount: parseInt(match[1]),
           },
         };
+        console.log("Intent:", intent);
       }
     }
 
@@ -1370,12 +1371,14 @@ _Ref: ${payment?.transactionNote || ""}_`;
             guests: parseInt(match[1]),
           },
         };
+        console.log("Intent:", intent);
       }
     }
 
     // fallback GPT
     if (!intent) {
       intent = await classifyIntent(messageForIntent, currentMissing);
+      console.log("Intent:", intent);
     }
     // if (
     //   /human|agent|real person|baat karni|insaan|customer care/i.test(
