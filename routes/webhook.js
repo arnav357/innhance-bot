@@ -2216,8 +2216,15 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         hotelId: hotel._id,
       });
 
-      const bookingActive = freshChat?.bookingFlow?.active;
-      if (bookingActive) {
+      console.log("bookingActive =", bookingActive);
+      console.log("status =", freshChat?.status);
+      console.log("intent =", intent.type);
+
+      const bookingActive =
+      freshChat?.bookingFlow?.active ||
+      freshChat?.status === "booking_in_progress";
+
+      if (bookingActive || intent.type === "booking") {
         const continueWords =
           /^(yes|yep|yeah|haan|ha|hmm|ok|okay|sure|continue|go ahead|proceed)$/i;
 
