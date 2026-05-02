@@ -390,7 +390,7 @@ async function sendPaymentQR(to, phoneNumberId, token, booking, hotel) {
         transactionNote,
         status: "pending",
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument:"after" },
     );
 
     const form = new FormData();
@@ -866,7 +866,7 @@ router.post("/", async (req, res) => {
     const customer = await Customer.findOneAndUpdate(
       { phone: customerPhone, hotelId: hotel._id },
       { lastSeen: new Date() },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument:"after" },
     );
 
     const chat = await Chat.findOne({
@@ -2216,13 +2216,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         hotelId: hotel._id,
       });
 
-      console.log("bookingActive =", bookingActive);
-      console.log("status =", freshChat?.status);
-      console.log("intent =", intent.type);
 
       const bookingActive =
       freshChat?.bookingFlow?.active ||
       freshChat?.status === "booking_in_progress";
+
+      console.log("bookingActive =", bookingActive);
+      console.log("status =", freshChat?.status);
+      console.log("intent =", intent.type);
 
       if (bookingActive || intent.type === "booking") {
         const continueWords =
