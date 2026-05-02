@@ -86,11 +86,11 @@ fields.guests = number
 2
 3
 
-If current missing booking field = roomsCount:
+First check if current missing booking field = roomsCount:
 type = booking
 fields.roomsCount = number
 
-If current missing booking field = guests:
+else current missing booking field = guests:
 type = booking
 fields.guests = number
 

@@ -1358,7 +1358,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
     }
 
     // GUESTS deterministic
-    if (!intent && bookingActive && currentMissing === "guests") {
+    if (!intent && bookingActive && currentMissing === "guests" && currentMissing !== "roomsCount") {
       const match = userMessage
         .trim()
         .match(
@@ -2533,6 +2533,7 @@ async function handleSmartBooking(
   hotel,
   customer,
 ) {
+  console.log("Handling smart booking with intent:", intent);
   const latestChat = await Chat.findOne({
     phone: customerPhone,
     hotelId: hotel._id,
@@ -2676,10 +2677,16 @@ async function handleSmartBooking(
     return;
   }
 
-  if (missing === "roomType") {
-    await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
+   if (missing === "name") {
+    await sendText(
+      customerPhone,
+      "😊 May I know your full name?",
+      phoneNumberId,
+      token,
+    );
     return;
   }
+
 
   if (missing === "checkIn") {
     await sendText(
@@ -2721,15 +2728,11 @@ async function handleSmartBooking(
     return;
   }
 
-  if (missing === "name") {
-    await sendText(
-      customerPhone,
-      "😊 May I know your full name?",
-      phoneNumberId,
-      token,
-    );
+  if (missing === "roomType") {
+    await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
     return;
   }
+
 
   // ALL DATA COMPLETE -> CREATE BOOKING
 
