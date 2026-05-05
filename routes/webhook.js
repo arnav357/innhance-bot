@@ -390,7 +390,7 @@ async function sendPaymentQR(to, phoneNumberId, token, booking, hotel) {
         transactionNote,
         status: "pending",
       },
-      { upsert: true, returnDocument:"after" },
+      { upsert: true, returnDocument: "after" },
     );
 
     const form = new FormData();
@@ -472,24 +472,35 @@ async function verifyPaymentScreenshot(
   mimeType,
   expectedAmount,
   hotel,
+  bookingCreatedAt, // pass booking.createdAt OR payment.createdAt
 ) {
   try {
-    const prompt = `You are a payment verification assistant. Examine this UPI payment screenshot carefully.
+    const prompt = `
+You are a payment verification assistant.
 
-Return ONLY a JSON object:
+Examine this UPI payment screenshot carefully.
+
+Return ONLY valid JSON:
+
 {
-  "receiverName": "exact name shown as receiver/payee",
+  "receiverName": "exact payee name",
   "amountPaid": 1234,
   "transactionDate": "DD/MM/YYYY or null",
-  "transactionId": "UPI transaction ID or null",
-  "isSuccessful": true or false
+  "transactionTime": "HH:MM AM/PM or null",
+  "transactionId": "UPI reference number or null",
+  "isSuccessful": true
 }
 
 Rules:
-- receiverName: exact payee name on screenshot
-- amountPaid: number only, no ₹ symbol
-- isSuccessful: true ONLY if screenshot clearly shows SUCCESS/COMPLETED
-- Return ONLY valid JSON, nothing else`;
+- receiverName = exact receiver/payee visible
+- amountPaid = number only
+- transactionDate = visible payment date
+- transactionTime = visible payment time
+- transactionId = exact visible txn/ref id
+- isSuccessful = true only if screenshot clearly says success/completed
+- If missing, use null
+- Return ONLY JSON
+`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -508,32 +519,106 @@ Rules:
           ],
         },
       ],
-      max_tokens: 300,
+      max_tokens: 400,
       temperature: 0,
     });
 
     const raw = response.choices[0].message.content
       .trim()
       .replace(/```json|```/g, "");
+
     const data = JSON.parse(raw);
+
+    // ------------------------------------------------
+    // BASIC CHECKS
+    // ------------------------------------------------
     const expectedName = hotel.upiName || PLATFORM_UPI_NAME;
-    const nameMatch = data.receiverName
-      ?.toLowerCase()
-      .includes(expectedName.toLowerCase());
-    const amountMatch = Math.abs(data.amountPaid - expectedAmount) <= 1;
+
+    const nameMatch =
+      data.receiverName &&
+      data.receiverName.toLowerCase().includes(expectedName.toLowerCase());
+
+    const amountMatch =
+      Math.abs(Number(data.amountPaid) - Number(expectedAmount)) <= 1;
+
     const isSuccess = data.isSuccessful === true;
 
+    // ------------------------------------------------
+    // TIME VALIDATION
+    // ------------------------------------------------
+    let timeMatch = false;
+    let transactionDateTime = null;
+
+    if (data.transactionDate && data.transactionTime) {
+      transactionDateTime = parseIndianTxnDateTime(
+        data.transactionDate,
+        data.transactionTime,
+      );
+
+      if (transactionDateTime) {
+        const bookingTime = new Date(bookingCreatedAt);
+
+        // screenshot payment must happen AFTER booking creation
+        // allow 2 mins clock mismatch
+        const minAllowed = bookingTime.getTime() - 2 * 60 * 1000;
+
+        // payment should not be too old
+        // max 24 hrs after booking
+        const maxAllowed = bookingTime.getTime() + 24 * 60 * 60 * 1000;
+
+        const txnMs = transactionDateTime.getTime();
+
+        if (txnMs >= minAllowed && txnMs <= maxAllowed) {
+          timeMatch = true;
+        }
+      }
+    }
+
+    // ------------------------------------------------
+    // FINAL VERIFY
+    // ------------------------------------------------
+    const verified = nameMatch && amountMatch && isSuccess && timeMatch;
+
     return {
-      verified: nameMatch && amountMatch && isSuccess,
+      verified,
       nameMatch,
       amountMatch,
       isSuccess,
+      timeMatch,
       extracted: data,
       expectedAmount,
+      bookingCreatedAt,
+      transactionDateTime,
     };
   } catch (err) {
     console.error("❌ verifyPaymentScreenshot error:", err.message);
-    return { verified: false, error: err.message };
+
+    return {
+      verified: false,
+      error: err.message,
+    };
+  }
+}
+
+// ====================================================
+// HELPER FUNCTION
+// ====================================================
+function parseIndianTxnDateTime(dateStr, timeStr) {
+  try {
+    const [day, month, year] = dateStr.split("/").map(Number);
+
+    let [time, meridian] = timeStr.split(" ");
+
+    let [hour, minute] = time.split(":").map(Number);
+
+    meridian = meridian?.toUpperCase();
+
+    if (meridian === "PM" && hour !== 12) hour += 12;
+    if (meridian === "AM" && hour === 12) hour = 0;
+
+    return new Date(year, month - 1, day, hour, minute, 0);
+  } catch {
+    return null;
   }
 }
 
@@ -866,7 +951,7 @@ router.post("/", async (req, res) => {
     const customer = await Customer.findOneAndUpdate(
       { phone: customerPhone, hotelId: hotel._id },
       { lastSeen: new Date() },
-      { upsert: true, returnDocument:"after" },
+      { upsert: true, returnDocument: "after" },
     );
 
     const chat = await Chat.findOne({
@@ -934,6 +1019,7 @@ router.post("/", async (req, res) => {
         media.mimeType,
         payment.amount,
         hotel,
+        payment.createdAt,
       );
       console.log("💳 Verification result:", JSON.stringify(result));
 
@@ -1358,7 +1444,12 @@ _Ref: ${payment?.transactionNote || ""}_`;
     }
 
     // GUESTS deterministic
-    if (!intent && bookingActive && currentMissing === "guests" && currentMissing !== "roomsCount") {
+    if (
+      !intent &&
+      bookingActive &&
+      currentMissing === "guests" &&
+      currentMissing !== "roomsCount"
+    ) {
       const match = userMessage
         .trim()
         .match(
@@ -2010,7 +2101,93 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         "user",
         "I want to book a room",
       );
+
+      // 🔍 Get latest booking
+      const latestBooking = await Booking.findOne({
+        phone: { $in: [normalizedPhone, customerPhone] },
+        hotelId: hotel._id,
+      }).sort({ createdAt: -1 });
+
+      let payment = null;
+
+      if (latestBooking) {
+        payment = await Payment.findOne({
+          bookingId: latestBooking._id,
+        }).sort({ createdAt: -1 });
+      }
+
+      // =====================================================
+      // ✅ SCENARIO B1 → booking incomplete
+      // =====================================================
+      if (latestBooking && latestBooking.status === "pending") {
+        await sendButtons(
+          customerPhone,
+          "😊 You already have an unfinished booking.\n\nWould you like to continue or start a new one?",
+          [
+            { id: "continue_old_booking", title: "📌 Continue" },
+            { id: "start_new_booking", title: "🆕 Start New" },
+          ],
+          phoneNumberId,
+          token,
+        );
+
+        return;
+      }
+
+      // =====================================================
+      // ✅ SCENARIO B2 → booking confirmed but payment pending
+      // =====================================================
+      if (
+        latestBooking &&
+        latestBooking.status === "confirmed" &&
+        payment &&
+        ["pending", "failed"].includes(payment.status)
+      ) {
+        await sendButtons(
+          customerPhone,
+          "😊 You already have a booking with pending payment.\n\nWould you like to pay now, pay at desk, or start a new booking?",
+          [
+            { id: "pay_qr", title: "💳 Pay Now" },
+            { id: "pay_desk", title: "🏨 Pay at Desk" },
+            { id: "start_new_booking", title: "🆕 New Booking" },
+          ],
+          phoneNumberId,
+          token,
+        );
+
+        return;
+      }
+
+      // =====================================================
+      // ✅ SCENARIO A → old booking completed / already paid
+      // =====================================================
+      if (latestBooking) {
+        const isPaid = payment && payment.status === "verified";
+
+        if (
+          latestBooking.status === "completed" ||
+          (latestBooking.status === "confirmed" && isPaid)
+        ) {
+          await sendButtons(
+            customerPhone,
+            "😊 You already had a booking with us earlier.\n\nWould you like to create a fresh new booking or ask a question?",
+            [
+              { id: "fresh_booking", title: "🆕 New Booking" },
+              { id: "ask_question", title: "❓ Ask Question" },
+            ],
+            phoneNumberId,
+            token,
+          );
+
+          return;
+        }
+      }
+
+      // =====================================================
+      // ✅ DEFAULT → no previous booking
+      // =====================================================
       await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
+
       await saveMessage(
         customerPhone,
         hotel._id,
@@ -2018,6 +2195,73 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         "assistant",
         "[Sent: Room selection menu]",
       );
+
+      return;
+    }
+
+    if (interactiveId === "continue_old_booking") {
+      await sendText(
+        customerPhone,
+        "😊 Let's continue your booking.",
+        phoneNumberId,
+        token,
+      );
+
+      return;
+    }
+
+    if (interactiveId === "start_new_booking") {
+      await Booking.updateMany(
+        {
+          phone: { $in: [normalizedPhone, customerPhone] },
+          hotelId: hotel._id,
+          status: "pending",
+        },
+        { status: "cancelled" },
+      );
+
+      await Payment.updateMany(
+        {
+          customerPhone,
+          hotelId: hotel._id,
+          status: "pending",
+        },
+        { status: "expired" },
+      );
+
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        {
+          bookingFlow: { active: false, data: {} },
+          status: "booking_in_progress",
+        },
+      );
+
+      await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
+      return;
+    }
+
+    if (interactiveId === "fresh_booking") {
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        {
+          bookingFlow: { active: false, data: {} },
+          status: "booking_in_progress",
+        },
+      );
+
+      await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
+      return;
+    }
+
+    if (interactiveId === "ask_question") {
+      await sendText(
+        customerPhone,
+        "😊 Sure! Ask me anything about rooms, pricing, check-in, or facilities.",
+        phoneNumberId,
+        token,
+      );
+
       return;
     }
 
@@ -2216,14 +2460,100 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         hotelId: hotel._id,
       });
 
-
       const bookingActive =
-      freshChat?.bookingFlow?.active ||
-      freshChat?.status === "booking_in_progress";
+        freshChat?.bookingFlow?.active ||
+        freshChat?.status === "booking_in_progress";
 
       console.log("bookingActive =", bookingActive);
       console.log("status =", freshChat?.status);
       console.log("intent =", intent.type);
+
+      // =====================================================
+      // 🚨 NEW: Handle fresh booking attempt (TEXT BASED)
+      // =====================================================
+      if (!bookingActive && intent.type === "booking") {
+        const latestBooking = await Booking.findOne({
+          phone: { $in: [normalizedPhone, customerPhone] },
+          hotelId: hotel._id,
+        }).sort({ createdAt: -1 });
+
+        let payment = null;
+
+        if (latestBooking) {
+          payment = await Payment.findOne({
+            bookingId: latestBooking._id,
+          }).sort({ createdAt: -1 });
+        }
+
+        // ----------------------------
+        // Scenario B1 → unfinished booking
+        // ----------------------------
+        if (latestBooking && latestBooking.status === "pending") {
+          console.log("Scenario B1 -> unfinished booking");
+          await sendButtons(
+            customerPhone,
+            "😊 You already have an unfinished booking.\n\nWould you like to continue or start a new one?",
+            [
+              { id: "continue_old_booking", title: "📌 Continue" },
+              { id: "start_new_booking", title: "🆕 Start New" },
+            ],
+            phoneNumberId,
+            token,
+          );
+
+          return;
+        }
+
+        // ----------------------------
+        // Scenario B2 → payment pending
+        // ----------------------------
+        if (
+          latestBooking &&
+          latestBooking.status === "confirmed" &&
+          payment &&
+          ["pending", "failed"].includes(payment.status)
+        ) {
+          console.log("Scenario B2 -> payment pending");
+          await sendButtons(
+            customerPhone,
+            "😊 You already have a booking with pending payment.\n\nWould you like to pay now, pay at desk, or start a new booking?",
+            [
+              { id: "pay_qr", title: "💳 Pay Now" },
+              { id: "pay_desk", title: "🏨 Pay at Desk" },
+              { id: "start_new_booking", title: "🆕 New Booking" },
+            ],
+            phoneNumberId,
+            token,
+          );
+
+          return;
+        }
+
+        // ----------------------------
+        // Scenario A → old completed/paid booking
+        // ----------------------------
+        if (latestBooking) {
+          const isPaid = payment && payment.status === "verified";
+
+          if (latestBooking.status === "confirmed" && isPaid) {
+            console.log("Scenario A -> old completed/paid booking");
+            await sendButtons(
+              customerPhone,
+              "😊 You already had a booking with us earlier.\n\nWould you like to create a fresh booking or ask a question?",
+              [
+                { id: "fresh_booking", title: "🆕 New Booking" },
+                { id: "ask_question", title: "❓ Ask Question" },
+              ],
+              phoneNumberId,
+              token,
+            );
+
+            return;
+          }
+        }
+
+        // If no previous booking → allow normal flow
+      }
 
       if (bookingActive || intent.type === "booking") {
         const continueWords =
@@ -2685,7 +3015,7 @@ async function handleSmartBooking(
     return;
   }
 
-   if (missing === "name") {
+  if (missing === "name") {
     await sendText(
       customerPhone,
       "😊 May I know your full name?",
@@ -2694,7 +3024,6 @@ async function handleSmartBooking(
     );
     return;
   }
-
 
   if (missing === "checkIn") {
     await sendText(
@@ -2740,7 +3069,6 @@ async function handleSmartBooking(
     await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
     return;
   }
-
 
   // ALL DATA COMPLETE -> CREATE BOOKING
 
@@ -2831,6 +3159,29 @@ async function handleSmartBooking(
     status: "confirmed",
     source: "whatsapp",
   });
+
+  const bookingRef = booking._id.toString().slice(-6).toUpperCase();
+
+  await Payment.findOneAndUpdate(
+    { bookingId: booking._id },
+    {
+      hotelId: hotel._id,
+      hotelName: hotel.name,
+      bookingId: booking._id,
+      bookingRef,
+      customerPhone,
+      guestName: data.name,
+      amount: total,
+      transactionNote: `HOTEL-${hotel.shortCode}-BOOK-${bookingRef}`,
+      status: "pending",
+      reminderCount: 0,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    },
+    {
+      upsert: true,
+      returnDocument: "after",
+    },
+  );
 
   await Chat.findOneAndUpdate(
     { phone: customerPhone, hotelId: hotel._id },
