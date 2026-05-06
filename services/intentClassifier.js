@@ -17,7 +17,6 @@ booking
 show_rooms
 hotel_question
 pricing
-policy
 payment
 human
 greeting
@@ -111,6 +110,9 @@ parking?
 wifi?
 lift?
 breakfast?
+pets allowed?
+smoking allowed?
+any policies related query
 type = hotel_question
 
 14. Understand Hinglish:
