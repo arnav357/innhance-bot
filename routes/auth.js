@@ -43,12 +43,14 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+
     res.json({
       token,
       user: {
         name:  user.name,
         email: user.email,
         role:  user.role,
+        managername: user.managerName,
       },
     });
 
