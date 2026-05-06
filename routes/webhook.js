@@ -1576,6 +1576,19 @@ _Ref: ${payment?.transactionNote || ""}_`;
       //   phoneNumberId,
       //   token,
       // );
+      // ✅ NON-EXPIRED CASE
+      await sendButtons(
+        customerPhone,
+        "💳 Your booking payment is still pending.\n\nHow would you like to continue? 😊",
+        [
+          { id: "pay_qr", title: "💳 Pay Now" },
+          { id: "pay_desk", title: "🏨 Pay at Desk" },
+          { id: "start_new_booking", title: "🆕 New Booking" },
+          { id: "ask_question", title: "Ask a question" },
+        ],
+        phoneNumberId,
+        token,
+      );
 
       return;
     }
