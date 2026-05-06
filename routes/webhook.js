@@ -1540,10 +1540,11 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
         await sendButtons(
           customerPhone,
-          "⏰ Payment link expired.\n\n✅ Your booking is still confirmed.\nWhat would you like to do now? 😊",
+          "⏳ Your previous booking payment has expired.\n\n✅ Your booking is still confirmed.\n\nYou can pay now, pay at desk, or start a new booking 😊",
           [
-            { id: "resend_qr", title: "🔁 Pay Again" },
-            { id: "talk_human", title: "👤 Talk Human" },
+            { id: "pay_qr", title: "💳 Pay Now" },
+            { id: "pay_desk", title: "🏨 Pay at Desk" },
+            { id: "start_new_booking", title: "🆕 New Booking" },
           ],
           phoneNumberId,
           token,
@@ -1552,29 +1553,29 @@ _Ref: ${payment?.transactionNote || ""}_`;
         return;
       }
 
-      pendingPayment.reminderCount += 1;
-      await pendingPayment.save();
+      // pendingPayment.reminderCount += 1;
+      // await pendingPayment.save();
 
-      let msg = "";
+      // let msg = "";
 
-      if (pendingPayment.reminderCount === 1) {
-        msg = "Kindly send your payment screenshot for verification 📸";
-      } else if (pendingPayment.reminderCount === 2) {
-        msg = "We're waiting for your payment screenshot 😊";
-      } else {
-        msg = "Please upload screenshot to confirm your booking.";
-      }
+      // if (pendingPayment.reminderCount === 1) {
+      //   msg = "Kindly send your payment screenshot for verification 📸";
+      // } else if (pendingPayment.reminderCount === 2) {
+      //   msg = "We're waiting for your payment screenshot 😊";
+      // } else {
+      //   msg = "Please upload screenshot to confirm your booking.";
+      // }
 
-      await sendButtons(
-        customerPhone,
-        msg,
-        [
-          { id: "resend_qr", title: "🔁 Resend QR" },
-          { id: "talk_human", title: "👤 Talk to Human" },
-        ],
-        phoneNumberId,
-        token,
-      );
+      // await sendButtons(
+      //   customerPhone,
+      //   msg,
+      //   [
+      //     { id: "resend_qr", title: "🔁 Resend QR" },
+      //     { id: "talk_human", title: "👤 Talk to Human" },
+      //   ],
+      //   phoneNumberId,
+      //   token,
+      // );
 
       return;
     }
