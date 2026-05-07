@@ -226,7 +226,7 @@ async function sendMainMenu(to, phoneNumberId, token, hotel) {
   ];
 
   // ✅ Add banquet option only if available
-  if (hotel.banquets?.length) {
+  if (hotel.banquetHalls?.length) {
     rows.push({
       id: "menu_banquet",
       title: "🎉 Banquet Facilities",
@@ -1178,7 +1178,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
     });
 
     if (interactiveId === "menu_banquet") {
-      if (!hotel.banquets?.length) {
+      if (!hotel.banquetHalls?.length) {
         await sendText(
           customerPhone,
           "Sorry, banquet facility is not available currently 😊",
@@ -1195,7 +1195,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         token,
       );
 
-      for (const banquet of hotel.banquets) {
+      for (const banquet of hotel.banquetHalls) {
         // Send banquet details
         await sendText(
           customerPhone,
