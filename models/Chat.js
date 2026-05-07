@@ -53,6 +53,7 @@ const chatSchema = new mongoose.Schema(
       data: {
         name: String,
         roomType: String,
+        planName:String,
         checkIn: Date,
         checkOut: Date,
         roomsCount: Number,
