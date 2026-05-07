@@ -1674,7 +1674,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
       //   phoneNumberId,
       //   token,
       // );
-      
+
       // ✅ NON-EXPIRED CASE
       await sendButtons(
         customerPhone,
@@ -3224,10 +3224,10 @@ async function handleSmartBooking(
       Date.now() - new Date(existingBooking.createdAt).getTime();
 
     // within last 30 minutes
-    if (createdAgo < 30 * 60 * 1000) {
+    if (createdAgo < 10 * 60 * 1000) {
       await sendText(
         customerPhone,
-        "😊 Your booking is already ready. Please choose payment method.",
+        "😊 You already created a booking just now. Please choose payment method for the last booking or retry for new booking after 10 minutes",
         phoneNumberId,
         token,
       );
