@@ -30,6 +30,35 @@ router.get("/all", verifyToken, async (req, res) => {
   }
 });
 
+router.put("/banquet-halls/update", verifyToken, async (req, res) => {
+  try {
+    const hotel = await Hotel.findById(req.user.hotelId);
+
+    if (!hotel) {
+      return res.status(404).json({
+        success: false,
+        message: "Hotel not found",
+      });
+    }
+
+    hotel.banquetHalls = req.body.banquetHalls;
+
+    await hotel.save();
+
+    res.json({
+      success: true,
+      banquetHalls: hotel.banquetHalls,
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
 // POST: Add a new room
 router.post("/add", verifyToken, async (req, res) => {
   try {
@@ -215,33 +244,5 @@ router.post(
 );
 
 
-router.put("/update-banquet-halls", verifyToken, async (req, res) => {
-  try {
-    const hotel = await Hotel.findById(req.user.hotelId);
-
-    if (!hotel) {
-      return res.status(404).json({
-        success: false,
-        message: "Hotel not found",
-      });
-    }
-
-    hotel.banquetHalls = req.body.banquetHalls;
-
-    await hotel.save();
-
-    res.json({
-      success: true,
-      banquetHalls: hotel.banquetHalls,
-    });
-  } catch (err) {
-    console.error(err);
-
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-});
 
 module.exports = router;
