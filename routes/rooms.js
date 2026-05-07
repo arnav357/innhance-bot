@@ -214,4 +214,25 @@ router.post(
   },
 );
 
+router.put("/update-banquet-halls", fetchHotel, async (req, res) => {
+  try {
+    const hotel = await Hotel.findById(req.hotel.id);
+
+    hotel.banquetHalls = req.body.banquetHalls;
+
+    await hotel.save();
+
+    res.json({
+      success: true,
+      banquetHalls: hotel.banquetHalls,
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      success: false,
+    });
+  }
+});
+
 module.exports = router;
