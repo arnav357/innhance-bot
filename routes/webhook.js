@@ -330,22 +330,21 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
   const isVideo =
     /\.(mp4|mov|webm|ogg)$/i.test(mediaUrl);
 
-  if (isVideo) {
 
+  if (isVideo) {
     await sendVideo(
-      customerPhone,
+      to,
       mediaUrl,
-      room.type,
+      room.name,
       phoneNumberId,
       token
     );
 
   } else {
-
     await sendImage(
-      customerPhone,
+      to,
       mediaUrl,
-      room.type,
+      room.name,
       phoneNumberId,
       token
     );
