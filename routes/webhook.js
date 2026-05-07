@@ -74,13 +74,7 @@ function parseDDMMYYYY(str) {
   return date;
 }
 
-async function sendList(
-  to,
-  bodyText,
-  sections,
-  phoneNumberId,
-  token,
-) {
+async function sendList(to, bodyText, sections, phoneNumberId, token) {
   try {
     await axios.post(
       `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
@@ -314,7 +308,7 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
   if (hotel.rooms?.length) {
     for (const room of hotel.rooms) {
       const images = room.images?.length
-        ? room.images.slice(0, 2) // limit to 2 images
+        ? room.images.slice(0, 7) // limit to 2 images
         : [FALLBACK_IMAGES.deluxe];
 
       const amenityText = room.amenities?.length
@@ -326,30 +320,16 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
         : `₹${room.price}/night`;
 
       for (const mediaUrl of room.images || []) {
+        const isVideo = /\.(mp4|mov|webm|ogg)$/i.test(mediaUrl);
 
-  const isVideo =
-    /\.(mp4|mov|webm|ogg)$/i.test(mediaUrl);
-
-
-  if (isVideo) {
-    await sendVideo(
-      to,
-      mediaUrl,
-      room.name,
-      phoneNumberId,
-      token
-    );
-
-  } else {
-    await sendImage(
-      to,
-      mediaUrl,
-      room.name,
-      phoneNumberId,
-      token
-    );
-  }
-}
+        if (isVideo) {
+          await sendVideo(to, mediaUrl, room.name, phoneNumberId, token);
+          await new Promise((resolve) => setTimeout(resolve, 700));
+        } else {
+          await sendImage(to, mediaUrl, room.name, phoneNumberId, token);
+          await new Promise((resolve) => setTimeout(resolve, 700));
+        }
+      }
     }
   } else {
     // Fallback
@@ -1224,28 +1204,29 @@ _Ref: ${payment?.transactionNote || ""}_`;
         );
 
         // Send images
-        if (banquet.images?.length) {
-          for (const img of banquet.images) {
-            await sendImage(
-              customerPhone,
-              img,
-              `📸 ${banquet.name}`,
-              phoneNumberId,
-              token,
-            );
-          }
-        }
+        for (const mediaUrl of banquet.images || []) {
+          const isVideo = /\.(mp4|mov|webm|ogg)$/i.test(mediaUrl);
 
-        // Send videos
-        if (banquet.videos?.length) {
-          for (const vid of banquet.videos) {
+          if (isVideo) {
             await sendVideo(
               customerPhone,
-              vid,
-              `🎥 ${banquet.name}`,
+              mediaUrl,
+              banquet.name,
               phoneNumberId,
               token,
             );
+
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+          } else {
+            await sendImage(
+              customerPhone,
+              mediaUrl,
+              banquet.name,
+              phoneNumberId,
+              token,
+            );
+
+            await new Promise((resolve) => setTimeout(resolve, 700));
           }
         }
       }
@@ -2446,14 +2427,12 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       const roomId = interactiveId.replace("room_custom_", "");
       const roomConfig = hotel.rooms?.find((r) => r._id.toString() === roomId);
       const roomPriceText = roomConfig?.plans?.length
-  ? roomConfig.plans
-      .map((p) => `${p.name} ₹${p.price}`)
-      .join(" | ")
-  : `₹${roomConfig.price?.toLocaleString()}/night`;
+        ? roomConfig.plans.map((p) => `${p.name} ₹${p.price}`).join(" | ")
+        : `₹${roomConfig.price?.toLocaleString()}/night`;
 
-const roomLabel = roomConfig
-  ? `${roomConfig.name} (${roomPriceText})`
-  : "selected room";
+      const roomLabel = roomConfig
+        ? `${roomConfig.name} (${roomPriceText})`
+        : "selected room";
 
       if (!roomConfig) {
         await sendText(
@@ -2723,6 +2702,81 @@ const roomLabel = roomConfig
             hotel,
             customer,
           );
+        }
+        if (intent.type === "banquet") {
+          if (!hotel.banquetHalls?.length) {
+            await sendText(
+              customerPhone,
+              "😊 Sorry, banquet facilities are not available at this hotel currently.",
+              phoneNumberId,
+              token,
+            );
+
+            return;
+          }
+
+          await sendText(
+            customerPhone,
+            "🎉 Here are our banquet facilities 😊",
+            phoneNumberId,
+            token,
+          );
+
+          for (const banquet of hotel.banquetHalls) {
+            await sendText(
+              customerPhone,
+              `🎊 *${banquet.name}*\n\n` +
+                `👥 Capacity: ${banquet.capacity || "N/A"} guests\n` +
+                `${banquet.description || ""}`,
+              phoneNumberId,
+              token,
+            );
+
+            for (const mediaUrl of banquet.images || []) {
+              const isVideo = /\.(mp4|mov|webm|ogg)$/i.test(mediaUrl);
+
+              if (isVideo) {
+                await sendVideo(
+                  customerPhone,
+                  mediaUrl,
+                  banquet.name,
+                  phoneNumberId,
+                  token,
+                );
+
+                await new Promise((resolve) => setTimeout(resolve, 1500));
+              } else {
+                await sendImage(
+                  customerPhone,
+                  mediaUrl,
+                  banquet.name,
+                  phoneNumberId,
+                  token,
+                );
+
+                await new Promise((resolve) => setTimeout(resolve, 700));
+              }
+            }
+          }
+
+          await sendButtons(
+            customerPhone,
+            "Would you like to connect with our team regarding banquet booking? 😊",
+            [
+              {
+                id: "talk_human",
+                title: "👤 Talk to Human",
+              },
+              {
+                id: "menu_book",
+                title: "🛏️ Book Room",
+              },
+            ],
+            phoneNumberId,
+            token,
+          );
+
+          return;
         }
 
         // Human request during booking
@@ -3312,7 +3366,6 @@ async function handleSmartBooking(
       pricePerNight = selectedPlan.price;
     }
   }
-
 
   // let pricePerNight = room?.price || 2500;
 

@@ -22,6 +22,7 @@ payment
 human
 greeting
 unknown
+banquet
 command
 
 Current missing booking field: ${currentMissing || "none"}
@@ -117,7 +118,10 @@ type = payment
 13. If asks human/staff/call:
 type = human
 
-14. If asks hotel facilities:
+14. If asks banquet/ banquet booking/ banquet facilities/ banquet images:
+type = banquet
+
+15. If asks hotel facilities:
 parking?
 wifi?
 lift?
@@ -127,12 +131,12 @@ smoking allowed?
 any policies related query
 type = hotel_question
 
-15. Understand Hinglish:
+16. Understand Hinglish:
 2 log = 2 guests
 room chahiye = booking
 photo bhejo = show_rooms
 
-16. If unsure:
+17. If unsure:
 type = unknown
 
 RETURN JSON only.
