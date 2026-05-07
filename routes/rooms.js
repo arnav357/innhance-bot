@@ -217,7 +217,14 @@ router.post(
 
 router.put("/update-banquet-halls", verifyToken, async (req, res) => {
   try {
-    const hotel = await Hotel.findById(req.hotel.id);
+    const hotel = await Hotel.findById(req.user.hotelId);
+
+    if (!hotel) {
+      return res.status(404).json({
+        success: false,
+        message: "Hotel not found",
+      });
+    }
 
     hotel.banquetHalls = req.body.banquetHalls;
 
@@ -232,6 +239,7 @@ router.put("/update-banquet-halls", verifyToken, async (req, res) => {
 
     res.status(500).json({
       success: false,
+      message: err.message,
     });
   }
 });
