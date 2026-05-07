@@ -3259,7 +3259,8 @@ async function handleSmartBooking(
     }
   }
 
-  let pricePerNight = room?.price || 2500;
+  
+  // let pricePerNight = room?.price || 2500;
 
   // If plans exist, use selected plan price
   if (room?.plans?.length && data.planName) {
