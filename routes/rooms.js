@@ -214,7 +214,8 @@ router.post(
   },
 );
 
-router.put("/update-banquet-halls", fetchHotel, async (req, res) => {
+
+router.put("/update-banquet-halls", verifyToken, async (req, res) => {
   try {
     const hotel = await Hotel.findById(req.hotel.id);
 
