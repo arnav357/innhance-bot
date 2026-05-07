@@ -174,74 +174,43 @@ async function sendButtons(to, bodyText, buttons, phoneNumberId, token) {
   }
 }
 
-async function sendList(to, bodyText, sections, phoneNumberId, token) {
-  try {
-    await axios.post(
-      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
-      {
-        messaging_product: "whatsapp",
-        to,
-        type: "interactive",
-        interactive: {
-          type: "list",
-          body: { text: bodyText },
-          action: { button: "View Options", sections },
-        },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-  } catch (err) {
-    console.error("❌ sendList error:", err.response?.data || err.message);
-  }
-}
-
-// ============================================================
-// MENU FUNCTIONS — dynamic per hotel
-// ============================================================
 async function sendMainMenu(to, phoneNumberId, token, hotel) {
+  const rows = [
+    {
+      id: "menu_book",
+      title: "🛏️ Book a Room",
+      description: "Reserve your perfect stay",
+    },
+    {
+      id: "menu_rooms",
+      title: "🏨 Rooms & Photos",
+      description: "See all rooms with prices",
+    },
+  ];
+
+  // ✅ Add banquet option only if available
+  if (hotel.banquets?.length) {
+    rows.push({
+      id: "menu_banquet",
+      title: "🎉 Banquet Facilities",
+      description: "Birthday & anniversary events",
+    });
+  }
+
+  // Existing human support option
+  rows.push({
+    id: "talk_human",
+    title: "👤 Talk to Human",
+    description: "Chat with our team directly",
+  });
+
   await sendList(
     to,
     `👋 *Welcome to ${hotel.name}!*\n\nI'm Inna, your personal assistant. How can I help you today? 😊`,
     [
       {
         title: "What can we help with?",
-        rows: [
-          {
-            id: "menu_book",
-            title: "🛏️ Book a Room",
-            description: "Reserve your perfect stay",
-          },
-          {
-            id: "menu_rooms",
-            title: "🏨 Rooms & Photos",
-            description: "See all rooms with prices",
-          },
-          // {
-          //   id: "menu_offers",
-          //   title: "🎁 Special Offers",
-          //   description: "Deals & discounts available",
-          // },
-          // {
-          //   id: "menu_checkin",
-          //   title: "⏰ Timings & Policy",
-          //   description: "Check-in, check-out & more",
-          // },
-          // {
-          //   id: "menu_contact",
-          //   title: "📞 Contact Us",
-          //   description: "Reach our team directly",
-          // },
-          {
-            id: "talk_human",
-            title: "👤 Talk to Human",
-            description: "Chat with our team directly",
-          },
-        ],
+        rows,
       },
     ],
     phoneNumberId,
@@ -256,7 +225,12 @@ async function sendRoomMenu(to, phoneNumberId, token, hotel) {
     rows = hotel.rooms.map((room) => ({
       id: `room_custom_${room._id}`,
       title: room.name.substring(0, 24), // ✅ FIX
-      description: `₹${room.price?.toLocaleString()}/night`,
+      description: room.plans?.length
+        ? room.plans
+            .map((p) => `${p.name} ₹${p.price}`)
+            .join(" | ")
+            .slice(0, 72)
+        : `₹${room.price}/night`,
     }));
   } else {
     // Fallback default rooms
@@ -310,11 +284,15 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
         ? room.amenities.slice(0, 3).join(" • ")
         : "Contact hotel for amenities";
 
+      const pricingText = room.plans?.length
+        ? room.plans.map((p) => `${p.name}: ₹${p.price}`).join(" | ")
+        : `₹${room.price}/night`;
+
       for (const img of images) {
         await sendImage(
           to,
           img,
-          `🛏️ *${room.name}* — ₹${room.price?.toLocaleString()}/night\n${amenityText} ✅`,
+          `🛏️ *${room.name}* \n ${pricingText}-${amenityText} ✅`,
           phoneNumberId,
           token,
         );
@@ -846,7 +824,18 @@ ${history.map((m) => `${m.role}: ${m.content}`).join("\n")}`;
 
     // Get price from hotel's room config
     const roomConfig = hotel.rooms?.find((r) => r.name === details.roomType);
-    const pricePerNight = roomConfig?.price || 2500;
+    let pricePerNight = roomConfig?.price || 2500;
+
+    // if plans exist
+    if (roomConfig?.plans?.length) {
+      const selectedPlan = roomConfig.plans.find(
+        (p) => p.name.toLowerCase() === details.planName?.toLowerCase(),
+      );
+
+      if (selectedPlan) {
+        pricePerNight = selectedPlan.price;
+      }
+    }
     const nights = Math.ceil(
       (new Date(details.checkOut) - new Date(details.checkIn)) /
         (1000 * 60 * 60 * 24),
@@ -1060,6 +1049,7 @@ router.post("/", async (req, res) => {
 
 ✅ *Name:* ${booking.guestName}
 🛏️ *Room:* ${booking.roomType}
+${booking.planName ? `🍽️ *Plan:* ${booking.planName}\n` : ""}
 📅 *Check-in:* ${new Date(booking.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
 📅 *Check-out:* ${new Date(booking.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
 🌙 *Nights:* ${nights}
@@ -1150,6 +1140,77 @@ _Ref: ${payment?.transactionNote || ""}_`;
       phone: customerPhone,
     });
 
+    if (interactiveId === "menu_banquet") {
+      if (!hotel.banquets?.length) {
+        await sendText(
+          customerPhone,
+          "Sorry, banquet facility is not available currently 😊",
+          phoneNumberId,
+          token,
+        );
+        return;
+      }
+
+      await sendText(
+        customerPhone,
+        "🎉 Here's a look at our banquet facilities 😊",
+        phoneNumberId,
+        token,
+      );
+
+      for (const banquet of hotel.banquets) {
+        // Send banquet details
+        await sendText(
+          customerPhone,
+          `🎊 *${banquet.name}*\n\n` +
+            `👥 Capacity: ${banquet.capacity || "N/A"} pax\n` +
+            `📝 ${banquet.description || ""}\n\n` +
+            `✨ Amenities:\n${banquet.amenities?.join(" • ") || "N/A"}`,
+          phoneNumberId,
+          token,
+        );
+
+        // Send images
+        if (banquet.images?.length) {
+          for (const img of banquet.images) {
+            await sendImage(
+              customerPhone,
+              img,
+              `📸 ${banquet.name}`,
+              phoneNumberId,
+              token,
+            );
+          }
+        }
+
+        // Send videos
+        if (banquet.videos?.length) {
+          for (const vid of banquet.videos) {
+            await sendVideo(
+              customerPhone,
+              vid,
+              `🎥 ${banquet.name}`,
+              phoneNumberId,
+              token,
+            );
+          }
+        }
+      }
+
+      await sendButtons(
+        customerPhone,
+        "For banquet booking, pricing and availability, please connect with our team 😊",
+        [
+          { id: "talk_human", title: "👤 Talk to Human" },
+          { id: "menu_book", title: "🛏️ Book Room" },
+        ],
+        phoneNumberId,
+        token,
+      );
+
+      return;
+    }
+
     if (interactiveId === "rooms_accept") {
       const freshChat = await Chat.findOne({
         phone: customerPhone,
@@ -1204,7 +1265,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         hotelId: hotel._id,
       });
 
-      const missing = getMissing(updatedChat.bookingFlow.data);
+      const missing = getMissing(updatedChat.bookingFlow.data, hotel);
 
       if (missing === "name") {
         await sendText(
@@ -1409,7 +1470,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
     const bookingActive = freshChat?.bookingFlow?.active;
     const currentMissing = bookingActive
-      ? getMissing(freshChat.bookingFlow.data || {})
+      ? getMissing(freshChat.bookingFlow.data || {}, hotel)
       : null;
 
     // // If waiting for guests and user typed only number
@@ -2022,6 +2083,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
 👤 *Name:* ${booking.guestName}
 🛏️ *Room:* ${booking.roomType}
+${booking.planName ? `🍽️ *Plan:* ${booking.planName}\n` : ""}
 📅 *Check-in:* ${new Date(booking.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
 📅 *Check-out:* ${new Date(booking.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
 🌙 *Nights:* ${nights}
@@ -2329,9 +2391,15 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     if (interactiveId.startsWith("room_custom_")) {
       const roomId = interactiveId.replace("room_custom_", "");
       const roomConfig = hotel.rooms?.find((r) => r._id.toString() === roomId);
-      const roomLabel = roomConfig
-        ? `${roomConfig.name} (₹${roomConfig.price?.toLocaleString()}/night)`
-        : "selected room";
+      const roomPriceText = roomConfig?.plans?.length
+  ? roomConfig.plans
+      .map((p) => `${p.name} ₹${p.price}`)
+      .join(" | ")
+  : `₹${roomConfig.price?.toLocaleString()}/night`;
+
+const roomLabel = roomConfig
+  ? `${roomConfig.name} (${roomPriceText})`
+  : "selected room";
 
       if (!roomConfig) {
         await sendText(
@@ -2900,7 +2968,7 @@ async function handleSmartBooking(
   // --------------------
 
   const msg = userMessage.trim();
-  const currentMissing = getMissing(oldData);
+  const currentMissing = getMissing(oldData, hotel);
 
   console.log("OLD DATA:", oldData);
   console.log("CURRENT MISSING:", currentMissing);
@@ -3005,7 +3073,7 @@ async function handleSmartBooking(
     },
   );
 
-  const missing = getMissing(data);
+  const missing = getMissing(data, hotel);
 
   if (
     data.checkIn &&
@@ -3084,6 +3152,27 @@ async function handleSmartBooking(
     return;
   }
 
+  if (missing === "planName") {
+    const room = hotel.rooms.find(
+      (r) => r.name.toLowerCase() === data.roomType.toLowerCase(),
+    );
+
+    const text = room.plans
+      .map(
+        (p, i) => `${i + 1}️⃣ ${p.name} — ₹${p.price}\n${p.description || ""}`,
+      )
+      .join("\n\n");
+
+    await sendText(
+      customerPhone,
+      `🍽️ Available plans for *${room.name}*:\n\n${text}\n\nWhich plan would you like? 😊`,
+      phoneNumberId,
+      token,
+    );
+
+    return;
+  }
+
   // ALL DATA COMPLETE -> CREATE BOOKING
 
   const existingBooking = await Booking.findOne({
@@ -3157,7 +3246,33 @@ async function handleSmartBooking(
     return;
   }
 
-  const total = (room?.price || 2500) * nights * data.roomsCount;
+  let pricePerNight = room?.price || 2500;
+
+  // If plans exist, use selected plan price
+  if (room?.plans?.length && data.planName) {
+    const selectedPlan = room.plans.find(
+      (p) => p.name.toLowerCase() === data.planName.toLowerCase(),
+    );
+
+    if (selectedPlan?.price) {
+      pricePerNight = selectedPlan.price;
+    }
+  }
+
+  let pricePerNight = room?.price || 2500;
+
+  // If plans exist, use selected plan price
+  if (room?.plans?.length && data.planName) {
+    const selectedPlan = room.plans.find(
+      (p) => p.name.toLowerCase() === data.planName.toLowerCase(),
+    );
+
+    if (selectedPlan?.price) {
+      pricePerNight = selectedPlan.price;
+    }
+  }
+
+  const total = pricePerNight * nights * data.roomsCount;
 
   const booking = await Booking.create({
     hotelId: hotel._id,
@@ -3167,6 +3282,7 @@ async function handleSmartBooking(
     checkIn: new Date(data.checkIn),
     checkOut: new Date(data.checkOut),
     roomType: data.roomType,
+    planName: data.planName,
     numberOfRooms: data.roomsCount,
     numberOfGuests: data.guests,
     totalAmount: total,

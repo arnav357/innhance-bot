@@ -17,6 +17,7 @@ booking
 show_rooms
 hotel_question
 pricing
+planName
 payment
 human
 greeting
@@ -51,17 +52,28 @@ Deluxe / Suite / Standard / Super Deluxe
 type = booking
 fields.roomType = detected room name
 
-4. If user sends only a person name:
+4. If user says:
+EP
+CP
+MAP
+breakfast plan
+room only
+meal plan
+
+type = booking
+fields.planName = detected plan
+
+5. If user sends only a person name:
 Arun Roy / Rahul / Amit Kumar
 type = booking
 fields.name = full text
 
-5. If user sends only date:
+6. If user sends only date:
 29/04/2026 or 29-04-2026
 type = booking
 fields.date = exact text
 
-6. If user says:
+7. If user says:
 1 room
 2 rooms
 3 room
@@ -71,7 +83,7 @@ do room
 type = booking
 fields.roomsCount = number
 
-7. If user says:
+8. If user says:
 2 guests
 3 log
 hum 4 hai
@@ -80,7 +92,7 @@ hum 4 hai
 type = booking
 fields.guests = number
 
-8. If user sends only a number:
+9. If user sends only a number:
 1
 2
 3
@@ -93,19 +105,19 @@ else current missing booking field = guests:
 type = booking
 fields.guests = number
 
-9. If user says yes/haan/ok/continue/proceed:
+10. If user says yes/haan/ok/continue/proceed:
 type = command
 
-10. If asks photos/images:
+11. If asks photos/images:
 type = show_rooms
 
-11. If asks payment/qr/upi:
+12. If asks payment/qr/upi:
 type = payment
 
-12. If asks human/staff/call:
+13. If asks human/staff/call:
 type = human
 
-13. If asks hotel facilities:
+14. If asks hotel facilities:
 parking?
 wifi?
 lift?
@@ -115,12 +127,12 @@ smoking allowed?
 any policies related query
 type = hotel_question
 
-14. Understand Hinglish:
+15. Understand Hinglish:
 2 log = 2 guests
 room chahiye = booking
 photo bhejo = show_rooms
 
-15. If unsure:
+16. If unsure:
 type = unknown
 
 RETURN JSON only.

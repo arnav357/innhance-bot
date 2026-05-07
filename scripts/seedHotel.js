@@ -2,84 +2,326 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const Hotel = require("../models/Hotel");
 
-const systemPrompt = `You are Inna, a warm and friendly hotel booking assistant for Innhance Hotels.
-You speak in a natural, human, conversational way — like a real receptionist, not a robot.
-You use emojis naturally in your responses to make them feel warm and friendly.
-Keep responses concise and clear — not too long.
+const systemPrompt = `You are Inna, a warm and friendly hotel guest assistant for HOTEL ND Manor.
 
-Here is everything you know about The 14 Gables Hotels:
+════════════════════════════════════
+HOTEL DATA
+════════════════════════════════════
 
 ROOMS & PRICING:
-- Standard Room: ₹2,500/night (perfect for solo travelers or couples)
-- Deluxe Room: ₹4,000/night (spacious with beautiful view)
-- Suite: ₹7,500/night (ultimate luxury experience)
-- All rooms include FREE breakfast and FREE WiFi
 
-CHECK-IN / CHECK-OUT:
-- Check-in: 12:00 PM (early check-in available on request)
-- Check-out: 11:00 AM (late check-out until 2 PM for ₹500 extra)
-- Valid photo ID required at check-in
+- Deluxe
+  • EP: ₹2000/night
+  • CP: ₹2500/night
+  • MAP: ₹3000/night
+  • Total Rooms: 6
+  • Max Guests: 2
+  • Room Numbers: 102, 103, 104, 105, 202, 203
+  • Description: Deluxe Rooms are non-view rooms with all modern facilities.
+  • Amenities:
+    - Extra bedding available with extra charge
+    - EP includes room only
+    - CP includes room with breakfast
+    - MAP includes room with breakfast and dinner
+    - 24 hours hot and cold water
+    - Room service
 
-AMENITIES (all free for guests):
-- Smart TV
-- Balcony
-- Mountain View
-- Free high-speed WiFi everywhere
-- Free parking (valet at ₹200/day)
+- Super Deluxe
+  • EP: ₹2500/night
+  • CP: ₹3000/night
+  • MAP: ₹3500/night
+  • Total Rooms: 8
+  • Max Guests: 2
+  • Room Numbers: 101, 201, 301, 302, 305, 210, 211, 212
+  • Description: Spacious rooms with balcony and view.
+  • Amenities:
+    - Extra bedding available with extra charge
+    - EP includes room only
+    - CP includes room with breakfast
+    - MAP includes room with breakfast and dinner
+    - 24 hours hot and cold water
+    - Room service
 
-RESTAURANT:
-- Breakfast: 7 AM - 10 AM (FREE for guests)
-- Lunch: 12 PM - 3 PM
-- Dinner: 7 PM - 11 PM
-- Cuisines: Indian, Continental, Chinese
+- Family
+  • EP: ₹3500/night
+  • CP: ₹4000/night
+  • MAP: ₹5500/night
+  • Total Rooms: 2
+  • Max Guests: 4
+  • Room Numbers: 302, 303
+  • Description: Family rooms with 2 double beds and scenic view.
+  • Amenities:
+    - 1 double bed and 1 sofa-cum-bed
+    - Extra bedding available with extra charge
+    - EP includes room only
+    - CP includes room with breakfast
+    - MAP includes room with breakfast and dinner
+    - 24 hours hot and cold water
+    - Room service
+    - All amenities available
 
-CANCELLATION POLICY:
+════════════════════════════════════
+BANQUET HALL
+════════════════════════════════════
+
+- Royal Banquet Hall
+  • Capacity: 300 guests
+  • Suitable for: Weddings, Engagements, Birthdays, Corporate Events
+  • Amenities:
+    - Indoor Air Conditioning
+    - In-house food service
+    - DJ setup
+    - Decoration support
+    - Dining area
+
+════════════════════════════════════
+CHECK-IN / CHECK-OUT
+════════════════════════════════════
+
+- Standard Check-in: 12:00 PM
+- Early Check-in Available: ₹500 extra (subject to availability)
+
+- Standard Check-out: 11:00 AM
+- Late Check-out Available: ₹500 extra (subject to availability)
+
+- Valid photo ID required
+- Local ID accepted ✅
+
+════════════════════════════════════
+HOTEL AMENITIES
+════════════════════════════════════
+
+- Free WiFi
+- Lift available
+- Wheelchair accessible
+- Toiletries available
+- 24 hours hot and cold water
+- Room service available
+- Taxi / Rapido available nearby
+
+════════════════════════════════════
+RESTAURANT
+════════════════════════════════════
+
+Restaurant Available: NO ❌
+
+However:
+- Breakfast available in CP and MAP plans
+- Dinner available in MAP plans
+
+════════════════════════════════════
+POLICIES
+════════════════════════════════════
+
+CANCELLATION:
 - Free cancellation up to 48 hours before check-in
 - 50% charge within 48 hours
 - No refund for no-shows
 
-SPECIAL OFFERS:
-- Weekend Special: 15% off Deluxe rooms
-- Family Package: Kids under 12 stay FREE
-- Long Stay Deal: 7 nights = 1 night FREE
-- Honeymoon Package: includes dinner + decoration
+PETS:
+- Pets allowed ✅
+- Cleaning/damage charges may apply if needed
+- Pet food charges separate
 
-LOCATION:
-- Address: 123 Hotel Street, City Centre
-- 15 minutes from airport
-- 5 minutes from railway station
-- Free pickup available
+CHILD POLICY:
+- Free stay for children up to 10 years
+- Extra bed available: ₹500
 
-CONTACT:
-- Phone: +917017164266
-- Email: arkventuresmanali@gmail.com
-- Front desk: 24/7
+SMOKING:
+- Smoking allowed in balcony
+- Not encouraged inside room
 
-BOOKING FLOW:
-When a guest wants to book a room, collect these details one by one in a conversational way:
+COUPLES:
+- Unmarried couples allowed ✅
+
+LOCAL ID:
+- Accepted ✅
+
+EARLY / LATE CHECK:
+- Early check-in available: ₹500
+- Late check-out available: ₹500
+- Subject to room availability
+
+════════════════════════════════════
+LOCATION
+════════════════════════════════════
+
+Address:
+Doon University Road, Mothrowala, Dehradun, Uttarakhand 248179
+
+Nearby Landmarks:
+- Doon University
+
+Tourist Spots:
+- Mindrolling Monastery
+- Robbers Cave
+- Forest Research Institute
+
+Distance:
+- Airport: 28 km
+- Railway Station: 8 km
+
+Accessibility:
+- Metro access: No
+- Wheelchair accessible ✅
+
+════════════════════════════════════
+RATINGS
+════════════════════════════════════
+
+- Overall: 4.3 ⭐
+- Cleanliness: 4.4
+- Staff: 4.5
+- Location: 4.2
+- Value for Money: 4.1
+
+Praised For:
+- Good hospitality
+- Clean rooms
+- Family friendly
+
+════════════════════════════════════
+CONTACT
+════════════════════════════════════
+
+Phone:
+- +91 9837233055
+- +91 7417774451
+- +91 7078944451
+
+Email:
+- hotelndmanor@gmail.com
+
+════════════════════════════════════
+UPI PAYMENT
+════════════════════════════════════
+
+UPI ID:
+paytm.s15ns9s@pty
+
+UPI Name:
+HOTEL ND MANOR
+
+════════════════════════════════════
+BOOKING FLOW — Collect ONE BY ONE naturally:
+════════════════════════════════════
+
 1. Full name
-2. Check-in date — ALWAYS ask for complete date in format DD/MM/YYYY.
-   If guest gives incomplete date like "25th" or just a number, ask:
-   "Could you please share the complete date with month and year? For example, 25/04/2026 😊"
-3. Check-out date — same as above, always full date DD/MM/YYYY
-4. Number of guests
-5. Room type preference
+2. Check-in date (DD/MM/YYYY)
+3. Check-out date (DD/MM/YYYY)
+4. Number of rooms
+5. Number of guests
+   - Ask adults and children separately if needed
+6. Room type
+7. Plan type (EP / CP / MAP)
 
-IMPORTANT DATE RULES:
-- Never assume the month or year
-- Always confirm the full date before moving on
-- If date is in the past, politely point it out and ask again
-- Valid format examples: 25/04/2026 or 25 April 2026
-- Always repeat back the full dates in the booking summary
+MID-BOOKING INTERRUPTION RULE:
+- If customer asks ANY question during booking flow
+  (pricing, amenities, location, policies, pets, smoking, etc.)
+  answer warmly first.
 
-Then summarize and confirm the booking with all details including full dates.
+- After answering always ask:
+  "Should I continue with your booking? 😊"
 
-IMPORTANT RULES:
-- Always be warm, friendly and use emojis naturally
-- Keep responses short and conversational
-- If someone says hi/hello/hey, greet them warmly
-- If asked something not related to the hotel, politely redirect
-- Never make up information not provided above`;
+- If customer says yes:
+  Resume from EXACT missing step.
+
+- Never restart booking flow.
+- Never re-ask already collected details.
+- Always remember previous information.
+
+After all details collected:
+- Ask payment preference (At Desk or QR)
+- Show booking summary
+- Confirm before submission
+
+════════════════════════════════════
+BOOKING SUMMARY FORMAT
+════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━
+🏨 Booking Summary
+━━━━━━━━━━━━━━━━━━━━
+👤 Name: [name]
+📅 Check-in: [DD/MM/YYYY]
+📅 Check-out: [DD/MM/YYYY]
+🌙 Nights: [X]
+🛏️ Room Type: [type]
+📦 Plan: [EP / CP / MAP]
+🔢 Rooms: [X]
+👥 Guests: [X adults, X children]
+💰 Estimated Total: ₹[amount]
+💳 Payment: [At Desk / QR]
+━━━━━━━━━━━━━━━━━━━━
+
+"Would you like me to submit this to our booking system? 😊"
+
+════════════════════════════════════
+IMPORTANT DATE RULES
+════════════════════════════════════
+
+- Never assume month or year
+- Always confirm complete dates
+- Past dates are invalid
+- Valid example: 25/04/2026
+- Always repeat dates in summary
+
+════════════════════════════════════
+PERSONALITY & INTELLIGENCE RULES
+════════════════════════════════════
+
+CONTEXT RULES:
+- Read entire conversation before every response
+- Never ask again for details already given
+- Continue conversation naturally
+- Never restart conversation mid-chat
+- If multiple details provided together, capture all
+
+LANGUAGE & TONE:
+- Understand Hinglish and casual language naturally
+- Examples:
+  • "kal" = tomorrow
+  • "parso" = day after tomorrow
+  • "2 log" = 2 guests
+  • "teen raat" = 3 nights
+
+- Understand dates naturally:
+  • "22 march"
+  • "22/3"
+  • "next friday"
+
+- Keep replies short and natural
+- Use emojis lightly and warmly
+
+SMART BEHAVIOUR:
+- If room type already given → don't ask again
+- If plan already given → continue ahead
+- If question asked mid-booking → answer first then continue
+- Always move conversation forward
+
+LANGUAGE DETECTION:
+- Always reply in SAME language as customer
+- Hindi → Hindi
+- Hinglish → Hinglish
+
+Supported:
+Hindi, English, Gujarati, Marathi, Punjabi, Tamil, Telugu,
+Bengali, Kannada, Malayalam, Arabic, French, Spanish
+
+════════════════════════════════════
+NEVER DO
+════════════════════════════════════
+
+- Never ask for already collected details
+- Never greet again mid-conversation
+- Never say "I'm an AI"
+- Never make up hotel facilities
+- Never confirm booking unless system confirms
+- Never claim payment received unless system confirms
+- Never say QR is ready unless system sends it
+
+If customer asks for payment before confirmation:
+→ "Once your booking is confirmed by our system, I'll guide you with payment options 😊"`;
 
 async function seed() {
   try {
@@ -89,24 +331,67 @@ async function seed() {
     // await Hotel.deleteOne({ email: 'admin@innhance.com' });
 
     const hotel = await Hotel.create({
-      name: "Bindram Palace",
-      email: "hotelbindrampalace@gmail.com",
-      password: "Bindram@3192",
-      // whatsappNumber: '+1 555 174 2481',
-      // whatsappNumber: '+1 555 646 1664',
+      name: "HOTEL ND Manor",
+      email: "hotelndmanor@gmail.com",
+      password: "ashirwad10$",
+
+      managerName: "Indresh Goel",
+
       whatsappNumber: "+919837233055",
-      // whatsappPhoneNumberId: '1030286350168358',
-      // whatsappPhoneNumberId: '1107267635800971',
       whatsappPhoneNumberId: "997060770167829",
+
+      contactNumber: ["+917417774451", "+917078944451"],
+
+      // short reference code for bookings/payments
+      shortCode: "NDM",
+
       botConfig: {
         assistantName: "Inna",
         systemPrompt: systemPrompt,
       },
+
+      hotel_location: "Doon University Road, Mothrowala, Dehradun Uttarakhand 248179",
+
       rooms: [
         {
-          name: "Family Suite",
-          price: 2500,
-          totalRooms: 11,
+          name: "Deluxe",
+          plans: [
+            {
+              name: "EP",
+              price: 2000,
+              description: "Room only",
+            },
+            {
+              name: "CP",
+              price: 2500,
+              description: "Room with breakfast",
+            },
+            {
+              name: "MAP",
+              price: 3000,
+              description: "Breakfast and dinner included",
+            },
+          ],
+
+          totalRooms: 6,
+          availableRooms: 6,
+
+          maximumGuests: 2,
+
+          description:
+            "Deluxe Rooms are the non view room with all modern facilities.",
+
+          amenities: [
+            "Extra Bedding Available with extra charge",
+            "EP plan includes room only , CP plan includes room with breakfast and MAP plan includes room with breakfast and dinner",
+            "24 hours hot and cold water",
+            "Room service"
+          ],
+
+          images: [
+            "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800",
+          ],
+
           roomNumbers: [
             { num: "102" },
             { num: "103" },
@@ -114,70 +399,243 @@ async function seed() {
             { num: "105" },
             { num: "202" },
             { num: "203" },
-            { num: "204" },
-            { num: "205" },
-            { num: "303" },
-            { num: "304" },
-            { num: "306" },
-          ],
-          amenities: [
-            "Air Conditioning",
-            "Attached Bathroom",
-            "Hot & Cold Water",
-            "Television",
-            "Extra Bedding Available",
-            "Wifi Access",
-            "Sofa come bed",
-            "2 chairs and table",
-            "Cooking cabinet for light cooking",
-            "Electric kettle",
+            
+            
           ],
         },
+
         {
-          name: "Deluxe",
-          price: 4000,
-          totalRooms: 6,
-          roomNumbers: [{ num: "101" }, { num: "201" }, { num: "301" }, { num: "302" }, { num: "305" }, { num: "210" }],
+          name: "Super Deluxe",
+
+          plans: [
+            {
+              name: "EP",
+              price: 2500,
+              description: "Room only",
+            },
+            {
+              name: "CP",
+              price: 3000,
+              description: "Room with breakfast",
+            },
+            {
+              name: "MAP",
+              price: 3500,
+              description: "Breakfast and dinner included",
+            }
+          ],
+
+          totalRooms: 8,
+          availableRooms: 8,
+
+          maximumGuests: 2,
+
+          description:
+            "Super Deluxe Rooms are spacious rooms with View and Balcony",
+
           amenities: [
-            "Air Conditioning",
-            "Attached Bathroom",
-            "Hot & Cold Water",
-            "Television",
-            "Wifi Access",
-            "2 chairs and table",
-            "Electric kettle",
+            "Extra Bedding Available with extra charge",
+            "EP plan includes room only , CP plan includes room with breakfast and MAP plan includes room with breakfast and dinner",
+            "24 hours hot and cold water",
+            "Room service"
+          ],
+
+          images: [
+            "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800",
+          ],
+
+          roomNumbers: [
+            { num: "101" },
+            { num: "201" },
+            { num: "301" },
+            { num: "302" },
+            { num: "305" },
+            { num: "210" },
+            { num: "211" },
+            { num: "212" },
           ],
         },
-        // {
-        //   name: "Super Deluxe",
-        //   price: 7500,
-        //   totalRooms: 5,
-        //   roomNumbers: [
-        //     { num: "301" },
-        //     { num: "302" },
-        //     { num: "304" },
-        //     { num: "305" },
-        //     { num: "306" },
-        //   ],
-        // },
-        // {
-        //   name: "Superior Corner",
-        //   price: 10000,
-        //   totalRooms: 1,
-        //   roomNumbers: [{ num: "303" }],
-        // },
+
+        {
+          name: "Family",
+          plans: [
+            {
+              name: "EP",
+              price: 3500,
+              description: "Room only",
+            },
+            {
+              name: "CP",
+              price: 4000,
+              description: "Room with breakfast",
+            },
+            {
+              name: "MAP",
+              price: 5500,
+              description: "Breakfast and dinner included",
+            },
+          ],
+
+          totalRooms: 2,
+          availableRooms: 2,
+
+          maximumGuests: 4,
+
+          description:
+            "Family Rooms comes with 2 double beds and view.It has all the amenities available",
+
+          amenities: [
+            "1 double bed and 1 sofa-cum-bed",
+            "Extra Bedding Available with extra charge",
+            "EP plan includes room only , CP plan includes room with breakfast and MAP plan includes room with breakfast and dinner",
+            "24 hours hot and cold water",
+            "Room service",
+            "All amenities available"
+          ],
+
+          images: [
+            "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800",
+          ],
+
+          roomNumbers: [
+            { num: "302" },
+            { num: "303" }
+            
+          ],
+        },
       ],
+
+      banquetHalls: [
+        {
+          name: "Royal Banquet Hall",
+
+          capacity: 300,
+
+          // pricePerDay: 80000,
+
+          // pricePerHour: 12000,
+
+          available: true,
+
+          description:
+            "Large banquet hall suitable for weddings,engagement and corporate events.",
+
+          amenities: [
+            "Indoor Air Conditioning",
+            "In house food service",
+            "DJ Setup",
+            "Decoration Support",
+            "Dining Area"
+          ],
+
+          images: [
+            "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800",
+          ],
+
+          eventTypes: ["Wedding", "Birthday", "Corporate", "Engagement"],
+
+          // timings: {
+          //   start: "09:00 AM",
+          //   end: "11:00 PM",
+          // },
+        },
+      ],
+
+      upiId: "paytm.s15ns9s@pty",
+      upiName: "HOTEL ND MANOR",
+
       images: {
         lobby:
           "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800",
+
         standardRoom:
           "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800",
+
         deluxeRoom:
           "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800",
+
         suite:
           "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800",
       },
+
+      restaurant: "no",
+
+      policies: {
+        cancellation: {
+          freeCancellationWindowHours: 48,
+          penaltyWithinWindow: "50%",
+          noShowRefund: false,
+        },
+
+        pet: {
+          allowed: true,
+          extraCharge: 0,
+          notes: "Only have to pay for cleaning charges if any damage is caused by pet, food charge separate",
+        },
+
+        child: {
+          freeStayAgeLimit: 10,
+          extraBedCharge: 500,
+        },
+
+        extraBed: {
+          available: true,
+          cost: 500,
+        },
+
+        smoking: {
+          allowedRooms: true,
+          designatedArea: false,
+          notes: "We encourage smoking in balcony of the room",
+        },
+
+        coupleFriendly: {
+          unmarriedCouplesAllowed: true,
+        },
+
+        localId: {
+          accepted: true,
+        },
+
+        earlyLateCheck: {
+          earlyCheckInAvailable: true,
+          earlyCheckInCharge: 500,
+          lateCheckOutAvailable: true,
+          lateCheckOutCharge: 500,
+          notes: "Early check-in and late check-out are subject to availability. Extra charge will need to be paid at the desk.",
+        },
+      },
+
+      locationDetails: {
+        airportDistanceKm: 28,
+        railwayDistanceKm: 8,
+        // busStandDistanceKm: 2,
+
+        nearbyLandmarks: ["Doon University"],
+
+        touristSpots: ["Mindrolling Monestary", "Robbers Cave","Forest Research Institute"],
+
+        metroAccess: false,
+        wheelchairAccessible: true,
+      },
+
+      ratings: {
+        overall: 4.3,
+        cleanliness: 4.4,
+        staff: 4.5,
+        location: 4.2,
+        valueForMoney: 4.1,
+
+        praises: ["Good hospitality", "Clean rooms", "Family friendly"],
+
+        complaints: ["Parking space limited"],
+      },
+
+      otherDetails:
+        "Toiletries available - YES, Lift available - YES, Room service - YES, 24 hours hot and cold water, Taxis rapido available",
+
       plan: "trial",
+
       isActive: true,
     });
 
