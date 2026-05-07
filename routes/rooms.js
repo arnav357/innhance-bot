@@ -191,10 +191,12 @@ router.post(
       }
       const base64 = req.file.buffer.toString("base64");
 
+      const isVideo = req.file.mimetype.startsWith("video/");
       const result = await cloudinary.uploader.upload(
         `data:${req.file.mimetype};base64,${base64}`,
         {
-          folder: `hotel_rooms/${folderName}`, // 🔥 KEY LINE
+          folder: `hotel_rooms/${folderName}`,
+          resource_type: isVideo ? "video" : "image",
         },
       );
       console.log("✅ Uploaded image to Cloudinary:", result.secure_url);

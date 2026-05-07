@@ -325,15 +325,32 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
         ? room.plans.map((p) => `${p.name}: ₹${p.price}`).join(" | ")
         : `₹${room.price}/night`;
 
-      for (const img of images) {
-        await sendImage(
-          to,
-          img,
-          `🛏️ *${room.name}* \n ${pricingText}-${amenityText} ✅`,
-          phoneNumberId,
-          token,
-        );
-      }
+      for (const mediaUrl of room.images || []) {
+
+  const isVideo =
+    /\.(mp4|mov|webm|ogg)$/i.test(mediaUrl);
+
+  if (isVideo) {
+
+    await sendVideo(
+      customerPhone,
+      mediaUrl,
+      room.type,
+      phoneNumberId,
+      token
+    );
+
+  } else {
+
+    await sendImage(
+      customerPhone,
+      mediaUrl,
+      room.type,
+      phoneNumberId,
+      token
+    );
+  }
+}
     }
   } else {
     // Fallback
