@@ -291,8 +291,8 @@ async function sendRoomMenu(to, phoneNumberId, token, hotel) {
   }
 
   const bodyText = hotel.rooms?.length
-    ? "🏨 *Choose your room type:*\n\n✅ Please ask about amenities for each room!\n👶 Children under 12 may stay FREE — ask for details!"
-    : "🏨 *Choose your room type:*\n\n✅ All rooms include FREE breakfast & WiFi!\n👶 Children under 12 stay FREE!";
+    ? "🏨 *Choose your room type:*\n\n✅ Please ask about amenities for each room!\n"
+    : "🏨 *Choose your room type:*\n\n✅ All rooms include FREE breakfast & WiFi!\n";
 
   await sendList(
     to,
