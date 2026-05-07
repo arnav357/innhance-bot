@@ -22,7 +22,9 @@ async function getHotel() {
 router.get("/all", verifyToken, async (req, res) => {
   try {
     const hotel = await Hotel.findById(req.user.hotelId);
-    res.json({ rooms: hotel.rooms });
+    res.json({ rooms: hotel.rooms,
+      banquetHalls: hotel.banquetHalls || []
+     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
