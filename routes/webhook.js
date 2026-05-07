@@ -74,6 +74,43 @@ function parseDDMMYYYY(str) {
   return date;
 }
 
+async function sendList(
+  to,
+  bodyText,
+  sections,
+  phoneNumberId,
+  token,
+) {
+  try {
+    await axios.post(
+      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      {
+        messaging_product: "whatsapp",
+        to,
+        type: "interactive",
+        interactive: {
+          type: "list",
+          body: {
+            text: bodyText,
+          },
+          action: {
+            button: "View Options",
+            sections,
+          },
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  } catch (err) {
+    console.error("❌ sendList error:", err.response?.data || err.message);
+  }
+}
+
 async function sendText(to, message, phoneNumberId, token) {
   try {
     await axios.post(
@@ -3259,7 +3296,7 @@ async function handleSmartBooking(
     }
   }
 
-  
+
   // let pricePerNight = room?.price || 2500;
 
   // If plans exist, use selected plan price
