@@ -2,7 +2,8 @@ const express = require("express");
 const router = express.Router();
 const DailyTask = require("../models/DailyTask");
 const Hotel = require("../models/Hotel");
-const verifyToken = require("../middleware/verifyToken");
+
+const verifyToken = require("../middleware/authMiddleware"); 
 
 router.get("/", (req, res) => {
   res.json({ message: "Dashboard API working" });
