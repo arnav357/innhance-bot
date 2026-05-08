@@ -17,46 +17,133 @@ router.post("/create", verifyToken, async (req, res) => {
       checkIn,
       checkOut,
       roomType,
+      planName,
+      numberOfRooms,
       numberOfGuests,
-      totalAmount
+      source,
     } = req.body;
 
-    // ✅ Get correct hotel from token
+    // ✅ Get hotel
     const hotel = await Hotel.findById(req.user.hotelId);
 
     if (!hotel) {
-      return res.status(404).json({ error: "Hotel not found" });
-    }
-
-    // ✅ Find or create customer (scoped to hotel)
-    let customer = await Customer.findOne({ phone, hotelId: hotel._id });
-
-    if (!customer) {
-      customer = await Customer.create({
-        phone,
-        hotelId: hotel._id
+      return res.status(404).json({
+        error: "Hotel not found",
       });
     }
 
-    // ✅ Create booking linked to hotel
-    const booking = await Booking.create({
-      hotelId: hotel._id,
-      customerId: customer._id,
-      guestName,
-      phone,
-      checkIn,
-      checkOut,
-      roomType,
-      numberOfGuests,
-      totalAmount,
-      status: "pending"
+    // ✅ Find room
+    const room = hotel.rooms.find(
+      (r) => r.name === roomType
+    );
+
+    if (!room) {
+      return res.status(404).json({
+        error: "Room type not found",
+      });
+    }
+
+    // ✅ Guest validation
+    if (
+      room.maximumGuests &&
+      numberOfGuests > room.maximumGuests
+    ) {
+      return res.status(400).json({
+        error: `Maximum ${room.maximumGuests} guests allowed`,
+      });
+    }
+
+    // ✅ Nights
+    const nights = Math.max(
+      1,
+      Math.ceil(
+        (new Date(checkOut) -
+          new Date(checkIn)) /
+          86400000
+      )
+    );
+
+    // ✅ Plan pricing
+    let pricePerNight =
+      room.price || 0;
+
+    if (
+      room.plans &&
+      room.plans.length > 0 &&
+      planName
+    ) {
+      const selectedPlan =
+        room.plans.find(
+          (p) => p.name === planName
+        );
+
+      if (selectedPlan?.price) {
+        pricePerNight =
+          selectedPlan.price;
+      }
+    }
+
+    // ✅ Total
+    const totalAmount =
+      pricePerNight *
+      nights *
+      numberOfRooms;
+
+    // ✅ Customer
+    let customer =
+      await Customer.findOne({
+        phone,
+        hotelId: hotel._id,
+      });
+
+    if (!customer) {
+      customer =
+        await Customer.create({
+          phone,
+          hotelId: hotel._id,
+        });
+    }
+
+    // ✅ Booking
+    const booking =
+      await Booking.create({
+        hotelId: hotel._id,
+        customerId: customer._id,
+
+        guestName,
+        phone,
+
+        checkIn,
+        checkOut,
+
+        roomType,
+        planName,
+
+        numberOfRooms,
+        numberOfGuests,
+
+        totalAmount,
+
+        source:
+          source || "direct",
+
+        status: "confirmed",
+      });
+
+    return res.json({
+      success: true,
+      booking,
     });
 
-    return res.json({ booking });
-
   } catch (err) {
-    console.error("Booking error:", err.message);
-    return res.status(500).json({ error: "Booking failed" });
+    console.error(
+      "Booking error:",
+      err.message
+    );
+
+    return res.status(500).json({
+      error: "Booking failed",
+    });
   }
 });
 
