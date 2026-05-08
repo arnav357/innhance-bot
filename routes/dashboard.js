@@ -3,7 +3,7 @@ const router = express.Router();
 const DailyTask = require("../models/DailyTask");
 const Hotel = require("../models/Hotel");
 
-const verifyToken = require("../middleware/authMiddleware"); 
+const verifyToken = require("../middleware/authMiddleware");
 
 router.get("/", (req, res) => {
   res.json({ message: "Dashboard API working" });
@@ -12,7 +12,7 @@ router.get("/", (req, res) => {
 router.get("/bookings", (req, res) => {
   res.json([
     { id: 1, name: "John", status: "confirmed" },
-    { id: 2, name: "Rahul", status: "pending" }
+    { id: 2, name: "Rahul", status: "pending" },
   ]);
 });
 
@@ -24,18 +24,11 @@ router.get("/today", verifyToken, async (req, res) => {
   try {
     const hotelId = req.user.hotelId;
 
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
+    const today = new Date().toLocaleDateString("en-CA");
 
     const tasks = await DailyTask.find({
       hotelId,
-      taskDate: {
-        $gte: start,
-        $lte: end,
-      },
+      taskDate: today,
       completed: false,
     }).sort({ createdAt: -1 });
 
@@ -43,7 +36,6 @@ router.get("/today", verifyToken, async (req, res) => {
       success: true,
       tasks,
     });
-
   } catch (err) {
     console.error(err);
 
@@ -53,29 +45,31 @@ router.get("/today", verifyToken, async (req, res) => {
   }
 });
 
-
 // =====================================================
 // CREATE TASK
 // =====================================================
 
 router.post("/create", verifyToken, async (req, res) => {
   try {
-    const { title, description, taskDate } = req.body;
+    const { title, description } = req.body;
+
+    const tomorrow = new Date();
+
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const formattedDate = tomorrow.toLocaleDateString("en-CA");
 
     const task = await DailyTask.create({
       hotelId: req.user.hotelId,
-
       title,
       description,
-
-      taskDate: taskDate || new Date()
+      taskDate: formattedDate,
     });
 
     res.json({
       success: true,
       task,
     });
-
   } catch (err) {
     console.error(err);
 
@@ -84,7 +78,6 @@ router.post("/create", verifyToken, async (req, res) => {
     });
   }
 });
-
 
 // =====================================================
 // COMPLETE TASK
@@ -114,7 +107,6 @@ router.patch("/complete/:taskId", verifyToken, async (req, res) => {
     res.json({
       success: true,
     });
-
   } catch (err) {
     console.error(err);
 
@@ -123,7 +115,6 @@ router.patch("/complete/:taskId", verifyToken, async (req, res) => {
     });
   }
 });
-
 
 // =====================================================
 // DELETE TASK
@@ -139,7 +130,6 @@ router.delete("/:taskId", verifyToken, async (req, res) => {
     res.json({
       success: true,
     });
-
   } catch (err) {
     console.error(err);
 
@@ -148,6 +138,5 @@ router.delete("/:taskId", verifyToken, async (req, res) => {
     });
   }
 });
-
 
 module.exports = router;

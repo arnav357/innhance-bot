@@ -21,7 +21,7 @@ const dailyTaskSchema = new mongoose.Schema(
     },
 
     taskDate: {
-      type: Date,
+      type: String,
       required: true,
     },
 
