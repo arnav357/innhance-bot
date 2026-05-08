@@ -33,9 +33,7 @@ router.post("/create", verifyToken, async (req, res) => {
     }
 
     // ✅ Find room
-    const room = hotel.rooms.find(
-      (r) => r.name === roomType
-    );
+    const room = hotel.rooms.find((r) => r.name === roomType);
 
     if (!room) {
       return res.status(404).json({
@@ -44,10 +42,7 @@ router.post("/create", verifyToken, async (req, res) => {
     }
 
     // ✅ Guest validation
-    if (
-      room.maximumGuests &&
-      numberOfGuests > room.maximumGuests
-    ) {
+    if (room.maximumGuests && numberOfGuests > room.maximumGuests) {
       return res.status(400).json({
         error: `Maximum ${room.maximumGuests} guests allowed`,
       });
@@ -56,90 +51,90 @@ router.post("/create", verifyToken, async (req, res) => {
     // ✅ Nights
     const nights = Math.max(
       1,
-      Math.ceil(
-        (new Date(checkOut) -
-          new Date(checkIn)) /
-          86400000
-      )
+      Math.ceil((new Date(checkOut) - new Date(checkIn)) / 86400000),
     );
 
     // ✅ Plan pricing
-    let pricePerNight =
-      room.price || 0;
+    let pricePerNight = room.price || 0;
 
-    if (
-      room.plans &&
-      room.plans.length > 0 &&
-      planName
-    ) {
-      const selectedPlan =
-        room.plans.find(
-          (p) => p.name === planName
-        );
+    if (room.plans && room.plans.length > 0 && planName) {
+      const selectedPlan = room.plans.find((p) => p.name === planName);
 
       if (selectedPlan?.price) {
-        pricePerNight =
-          selectedPlan.price;
+        pricePerNight = selectedPlan.price;
       }
     }
 
     // ✅ Total
-    const totalAmount =
-      pricePerNight *
-      nights *
-      numberOfRooms;
+    const totalAmount = pricePerNight * nights * numberOfRooms;
 
     // ✅ Customer
-    let customer =
-      await Customer.findOne({
+    let customer = await Customer.findOne({
+      phone,
+      hotelId: hotel._id,
+    });
+
+    if (!customer) {
+      customer = await Customer.create({
         phone,
         hotelId: hotel._id,
       });
-
-    if (!customer) {
-      customer =
-        await Customer.create({
-          phone,
-          hotelId: hotel._id,
-        });
     }
 
     // ✅ Booking
-    const booking =
-      await Booking.create({
-        hotelId: hotel._id,
-        customerId: customer._id,
+    const booking = await Booking.create({
+      hotelId: hotel._id,
+      customerId: customer._id,
 
-        guestName,
-        phone,
+      guestName,
+      phone,
 
-        checkIn,
-        checkOut,
+      checkIn,
+      checkOut,
 
-        roomType,
-        planName,
+      roomType,
+      planName,
 
-        numberOfRooms,
-        numberOfGuests,
+      numberOfRooms,
+      numberOfGuests,
 
-        totalAmount,
+      totalAmount,
 
-        source:
-          source || "direct",
+      source: source || "direct",
 
-        status: "confirmed",
-      });
+      status: "confirmed",
+      paymentStatus: "pending",
+    });
+
+    const bookingRef = booking._id.toString().slice(-6).toUpperCase();
+
+    await Payment.create({
+      hotelId: hotel._id,
+      hotelName: hotel.name,
+
+      bookingId: booking._id,
+      bookingRef,
+
+      customerPhone: phone,
+      guestName,
+
+      amount: totalAmount,
+      currency: "INR",
+
+      transactionNote: `HOTEL-${hotel._id
+        .toString()
+        .slice(-4)
+        .toUpperCase()}-BOOK-${bookingRef}`,
+
+      status: "pending",
+    });
 
     return res.json({
       success: true,
       booking,
     });
-
   } catch (err) {
-    console.error(
-      "Booking error:",
-      err.message
-    );
+    console.error("Booking error:", err.message);
 
     return res.status(500).json({
       error: "Booking failed",
@@ -147,29 +142,26 @@ router.post("/create", verifyToken, async (req, res) => {
   }
 });
 
-
-
 router.get("/all", verifyToken, async (req, res) => {
   try {
     const bookings = await Booking.find({
-      hotelId: req.user.hotelId
+      hotelId: req.user.hotelId,
     }).sort({ createdAt: -1 });
 
     const bookingsWithPayment = await Promise.all(
       bookings.map(async (booking) => {
         const payment = await Payment.findOne({
-          bookingId: booking._id
+          bookingId: booking._id,
         });
 
         return {
           ...booking.toObject(),
-          paymentStatus: payment ? payment.status : "unpaid"
+          paymentStatus: payment ? payment.status : "unpaid",
         };
-      })
+      }),
     );
 
     res.json({ bookings: bookingsWithPayment });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch bookings" });
@@ -185,7 +177,7 @@ router.patch("/cancel-pay-at-desk/:id", verifyToken, async (req, res) => {
     const updatedBooking = await Booking.findOneAndUpdate(
       { _id: bookingId, hotelId: req.user.hotelId },
       { status: "cancelled" },
-      { new: true }
+      { new: true },
     );
 
     if (!updatedBooking) {
@@ -194,9 +186,8 @@ router.patch("/cancel-pay-at-desk/:id", verifyToken, async (req, res) => {
 
     return res.json({
       message: "Booking cancelled successfully",
-      booking: updatedBooking
+      booking: updatedBooking,
     });
-
   } catch (err) {
     console.error("Cancellation error:", err.message);
     return res.status(500).json({ error: "Cancellation failed" });
@@ -207,7 +198,7 @@ router.patch("/verify-payment/:bookingId", verifyToken, async (req, res) => {
   try {
     const booking = await Booking.findOne({
       _id: req.params.bookingId,
-      hotelId: req.user.hotelId
+      hotelId: req.user.hotelId,
     });
 
     if (!booking) {
@@ -215,7 +206,7 @@ router.patch("/verify-payment/:bookingId", verifyToken, async (req, res) => {
     }
 
     let payment = await Payment.findOne({
-      bookingId: booking._id
+      bookingId: booking._id,
     });
 
     if (!payment) {
@@ -223,7 +214,7 @@ router.patch("/verify-payment/:bookingId", verifyToken, async (req, res) => {
         bookingId: booking._id,
         hotelId: req.user.hotelId,
         amount: booking.totalAmount,
-        status: "verified"
+        status: "verified",
       });
     } else {
       payment.status = "verified";
@@ -231,7 +222,6 @@ router.patch("/verify-payment/:bookingId", verifyToken, async (req, res) => {
     }
 
     res.json({ success: true, payment });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to verify payment" });
@@ -242,7 +232,7 @@ router.patch("/complete/:bookingId", verifyToken, async (req, res) => {
   try {
     const booking = await Booking.findOne({
       _id: req.params.bookingId,
-      hotelId: req.user.hotelId
+      hotelId: req.user.hotelId,
     });
 
     if (!booking) {
@@ -250,12 +240,12 @@ router.patch("/complete/:bookingId", verifyToken, async (req, res) => {
     }
 
     const payment = await Payment.findOne({
-      bookingId: booking._id
+      bookingId: booking._id,
     });
 
     if (!payment || payment.status !== "verified") {
       return res.status(400).json({
-        error: "Please first verify the payment then complete booking"
+        error: "Please first verify the payment then complete booking",
       });
     }
 
@@ -263,7 +253,6 @@ router.patch("/complete/:bookingId", verifyToken, async (req, res) => {
     await booking.save();
 
     res.json({ success: true, booking });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to complete booking" });
@@ -277,8 +266,7 @@ router.patch("/confirm/:bookingId", verifyToken, async (req, res) => {
       hotelId: req.user.hotelId,
     });
 
-    if (!booking)
-      return res.status(404).json({ error: "Booking not found" });
+    if (!booking) return res.status(404).json({ error: "Booking not found" });
 
     booking.status = "confirmed";
     await booking.save();
