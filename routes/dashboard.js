@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const DailyTask = require("../models/DailyTask");
 const Hotel = require("../models/Hotel");
+const Booking=require("../models/Booking");
 
 const verifyToken = require("../middleware/authMiddleware");
 
