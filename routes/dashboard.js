@@ -16,6 +16,83 @@ router.get("/bookings", (req, res) => {
   ]);
 });
 
+router.get("/alerts", verifyToken, async (req, res) => {
+  try {
+    const hotelId = req.user.hotelId;
+
+    const hotel = await Hotel.findById(hotelId);
+
+    const timezone = hotel?.timezone || "UTC";
+
+    const now = new Date();
+
+    const hotelNow = new Date(
+      now.toLocaleString("en-US", {
+        timeZone: timezone,
+      }),
+    );
+
+    const start = new Date(hotelNow);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(hotelNow);
+    end.setHours(23, 59, 59, 999);
+
+    const todayCheckIns = await Booking.find({
+      hotelId,
+      checkIn: {
+        $gte: start,
+        $lte: end,
+      },
+      status: {
+        $ne: "cancelled",
+      },
+    });
+
+    const todayCheckOuts = await Booking.find({
+      hotelId,
+      checkOut: {
+        $gte: start,
+        $lte: end,
+      },
+      status: {
+        $ne: "cancelled",
+      },
+    });
+
+    const alerts = [];
+
+    todayCheckIns.forEach((booking) => {
+      alerts.push({
+        type: "checkin",
+        icon: "🟢",
+        title: `${booking.guestName} checking in`,
+        description: `${booking.roomType} • ${booking.numberOfRooms} room(s)`,
+      });
+    });
+
+    todayCheckOuts.forEach((booking) => {
+      alerts.push({
+        type: "checkout",
+        icon: "🔵",
+        title: `${booking.guestName} checking out`,
+        description: `${booking.roomType} • ${booking.numberOfRooms} room(s)`,
+      });
+    });
+
+    res.json({
+      success: true,
+      alerts,
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      error: "Failed to load alerts",
+    });
+  }
+});
+
 // =====================================================
 // GET TODAY TASKS
 // =====================================================

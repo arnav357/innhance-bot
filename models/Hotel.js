@@ -72,6 +72,11 @@ const hotelSchema = new mongoose.Schema(
         },
       },
     ],
+    
+    timezone: {
+      type: String,
+      default: "Asia/Kolkata",
+    },
 
     upiId: { type: String }, // e.g. hotel@upi
     upiName: { type: String }, // receiver name
