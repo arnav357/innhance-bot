@@ -3432,14 +3432,35 @@ async function handleSmartBooking(
   });
 
   if (!availability.available) {
-    await sendText(
-      customerPhone,
-      `❌ Sorry, ${availability.remainingRooms} room(s) are available for those dates.`,
-      phoneNumberId,
-      token,
-    );
+      const remaining = Math.max(0, availability.remainingRooms);
 
-    return;
+    // RESET BOOKING FLOW
+    await Chat.findOneAndUpdate(
+      {
+        phone: customerPhone,
+        hotelId: hotel._id,
+      },
+      {
+        status: "inquiry",
+        bookingFlow: {
+          active: false,
+          awaitingResume: false,
+          data: {},
+        },
+      },
+    );
+    await sendButtons(
+    customerPhone,
+    `❌ Sorry, only ${remaining} room(s) are available for those dates.\n\nWould you like to try different dates or start a new booking? 😊`,
+    [
+      { id: "menu_book", title: "🛏️ Book Again" },
+      { id: "menu_rooms", title: "🏨 View Rooms" },
+    ],
+    phoneNumberId,
+    token,
+  );
+
+  return;
   }
 
   const booking = await Booking.create({
