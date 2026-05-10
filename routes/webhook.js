@@ -804,115 +804,156 @@ async function getSmartReply(
 // ============================================================
 // EXTRACT & SAVE BOOKING FROM CONVERSATION
 // ============================================================
-async function tryExtractAndSaveBooking(
-  phone,
+// async function tryExtractAndSaveBooking(
+//   phone,
+//   hotelId,
+//   customerId,
+//   history,
+//   hotel,
+// ) {
+//   try {
+//     const roomTypes = hotel.rooms?.length
+//       ? hotel.rooms.map((r) => r.name).join(" / ")
+//       : "Standard Room / Deluxe Room / Suite";
+
+//     const extractPrompt = `Look at this conversation and extract booking details if ALL are present.
+// Return ONLY a JSON object or return null if any required field is missing:
+// {
+//   "guestName": "full name",
+//   "checkIn": "YYYY-MM-DD",
+//   "checkOut": "YYYY-MM-DD",
+//   "roomType": "exact room type name — must be one of: ${roomTypes}",
+//   "numberOfGuests": 2,
+//   "numberOfRooms": 1,
+//   "adultsCount": 2,
+//   "childrenCount": 0
+// }
+// Return null if guestName, checkIn, checkOut, or roomType is missing.
+// Return ONLY valid JSON, no explanation.
+
+// Conversation:
+// ${history.map((m) => `${m.role}: ${m.content}`).join("\n")}`;
+
+//     const extraction = await openai.chat.completions.create({
+//       model: "gpt-4o",
+//       messages: [{ role: "user", content: extractPrompt }],
+//       max_tokens: 250,
+//       temperature: 0,
+//     });
+
+//     const raw = extraction.choices[0].message.content
+//       .trim()
+//       .replace(/```json|```/g, "");
+//     if (raw === "null" || !raw.startsWith("{")) return null;
+
+//     const details = JSON.parse(raw);
+//     if (
+//       !details.guestName ||
+//       !details.checkIn ||
+//       !details.checkOut ||
+//       !details.roomType
+//     )
+//       return null;
+
+//     // Get price from hotel's room config
+//     const roomConfig = hotel.rooms?.find((r) => r.name === details.roomType);
+//     let pricePerNight = roomConfig?.price || 2500;
+
+//     // if plans exist
+//     if (roomConfig?.plans?.length) {
+//       const selectedPlan = roomConfig.plans.find(
+//         (p) => p.name.toLowerCase() === details.planName?.toLowerCase(),
+//       );
+
+//       if (selectedPlan) {
+//         pricePerNight = selectedPlan.price;
+//       }
+//     }
+//     const nights = Math.ceil(
+//       (new Date(details.checkOut) - new Date(details.checkIn)) /
+//         (1000 * 60 * 60 * 24),
+//     );
+//     const totalAmount = pricePerNight * nights * (details.numberOfRooms || 1);
+
+//     if (nights <= 0) return null;
+
+//     const existing = await Booking.findOne({
+//       phone: { $in: [normalizePhone(phone), phone] },
+//       hotelId,
+//       status: "pending",
+//     }).sort({ createdAt: -1 });
+
+//     if (existing) {
+//       Object.assign(existing, {
+//         guestName: details.guestName,
+//         checkIn: details.checkIn,
+//         checkOut: details.checkOut,
+//         roomType: details.roomType,
+//         numberOfGuests: details.numberOfGuests,
+//         totalAmount,
+//       });
+//       await existing.save();
+//       return existing;
+//     }
+
+//     return await Booking.create({
+//       hotelId,
+//       customerId,
+//       guestName: details.guestName,
+//       phone: normalizePhone(phone),
+//       checkIn: new Date(details.checkIn),
+//       checkOut: new Date(details.checkOut),
+//       roomType: details.roomType,
+//       numberOfGuests: details.numberOfGuests || 1,
+//       totalAmount,
+//       status: "pending",
+//       source: "whatsapp",
+//     });
+//   } catch (err) {
+//     console.log("ℹ️ Booking extraction skipped:", err.message);
+//     return null;
+//   }
+// }
+
+async function checkRoomAvailability({
   hotelId,
-  customerId,
-  history,
-  hotel,
-) {
-  try {
-    const roomTypes = hotel.rooms?.length
-      ? hotel.rooms.map((r) => r.name).join(" / ")
-      : "Standard Room / Deluxe Room / Suite";
+  roomType,
+  checkIn,
+  checkOut,
+  requestedRooms,
+}) {
+  const hotel = await Hotel.findById(hotelId);
 
-    const extractPrompt = `Look at this conversation and extract booking details if ALL are present.
-Return ONLY a JSON object or return null if any required field is missing:
-{
-  "guestName": "full name",
-  "checkIn": "YYYY-MM-DD",
-  "checkOut": "YYYY-MM-DD",
-  "roomType": "exact room type name — must be one of: ${roomTypes}",
-  "numberOfGuests": 2,
-  "numberOfRooms": 1,
-  "adultsCount": 2,
-  "childrenCount": 0
-}
-Return null if guestName, checkIn, checkOut, or roomType is missing.
-Return ONLY valid JSON, no explanation.
+  const room = hotel.rooms.find(
+    (r) => r.name.toLowerCase() === roomType.toLowerCase(),
+  );
 
-Conversation:
-${history.map((m) => `${m.role}: ${m.content}`).join("\n")}`;
-
-    const extraction = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: extractPrompt }],
-      max_tokens: 250,
-      temperature: 0,
-    });
-
-    const raw = extraction.choices[0].message.content
-      .trim()
-      .replace(/```json|```/g, "");
-    if (raw === "null" || !raw.startsWith("{")) return null;
-
-    const details = JSON.parse(raw);
-    if (
-      !details.guestName ||
-      !details.checkIn ||
-      !details.checkOut ||
-      !details.roomType
-    )
-      return null;
-
-    // Get price from hotel's room config
-    const roomConfig = hotel.rooms?.find((r) => r.name === details.roomType);
-    let pricePerNight = roomConfig?.price || 2500;
-
-    // if plans exist
-    if (roomConfig?.plans?.length) {
-      const selectedPlan = roomConfig.plans.find(
-        (p) => p.name.toLowerCase() === details.planName?.toLowerCase(),
-      );
-
-      if (selectedPlan) {
-        pricePerNight = selectedPlan.price;
-      }
-    }
-    const nights = Math.ceil(
-      (new Date(details.checkOut) - new Date(details.checkIn)) /
-        (1000 * 60 * 60 * 24),
-    );
-    const totalAmount = pricePerNight * nights * (details.numberOfRooms || 1);
-
-    if (nights <= 0) return null;
-
-    const existing = await Booking.findOne({
-      phone: { $in: [normalizePhone(phone), phone] },
-      hotelId,
-      status: "pending",
-    }).sort({ createdAt: -1 });
-
-    if (existing) {
-      Object.assign(existing, {
-        guestName: details.guestName,
-        checkIn: details.checkIn,
-        checkOut: details.checkOut,
-        roomType: details.roomType,
-        numberOfGuests: details.numberOfGuests,
-        totalAmount,
-      });
-      await existing.save();
-      return existing;
-    }
-
-    return await Booking.create({
-      hotelId,
-      customerId,
-      guestName: details.guestName,
-      phone: normalizePhone(phone),
-      checkIn: new Date(details.checkIn),
-      checkOut: new Date(details.checkOut),
-      roomType: details.roomType,
-      numberOfGuests: details.numberOfGuests || 1,
-      totalAmount,
-      status: "pending",
-      source: "whatsapp",
-    });
-  } catch (err) {
-    console.log("ℹ️ Booking extraction skipped:", err.message);
-    return null;
+  if (!room) {
+    return {
+      available: false,
+      remainingRooms: 0,
+    };
   }
+
+  const overlappingBookings = await Booking.find({
+    hotelId,
+    roomType: new RegExp(`^${roomType}$`, "i"),
+    status: "confirmed",
+    checkIn: { $lt: checkOut },
+    checkOut: { $gt: checkIn },
+  });
+
+  const alreadyBooked = overlappingBookings.reduce(
+    (sum, booking) => sum + (booking.numberOfRooms || 1),
+    0,
+  );
+
+  const remainingRooms = room.totalRooms - alreadyBooked;
+
+  return {
+    available: remainingRooms >= requestedRooms,
+    remainingRooms,
+  };
 }
 
 // ============================================================
@@ -3381,6 +3422,25 @@ async function handleSmartBooking(
   }
 
   const total = pricePerNight * nights * data.roomsCount;
+
+  const availability = await checkRoomAvailability({
+    hotelId: hotel._id,
+    roomType: data.roomType,
+    checkIn: data.checkIn,
+    checkOut: data.checkOut,
+    requestedRooms: data.roomsCount || 1,
+  });
+
+  if (!availability.available) {
+    await sendText(
+      customerPhone,
+      `❌ Sorry, ${availability.remainingRooms} room(s) are available for those dates.`,
+      phoneNumberId,
+      token,
+    );
+
+    return;
+  }
 
   const booking = await Booking.create({
     hotelId: hotel._id,
