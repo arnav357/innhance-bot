@@ -71,7 +71,7 @@ function parseDDMMYYYY(str) {
     return null;
   }
 
-  return date;
+  return date.toISOString().split("T")[0];
 }
 
 async function sendList(to, bodyText, sections, phoneNumberId, token) {
@@ -729,7 +729,7 @@ function parseDate(input) {
 
   if (date < today) return null;
 
-  return date;
+  return date.toISOString().split("T")[0];
 }
 
 // ============================================================
@@ -886,8 +886,8 @@ ${history.map((m) => `${m.role}: ${m.content}`).join("\n")}`;
     if (existing) {
       Object.assign(existing, {
         guestName: details.guestName,
-        checkIn: new Date(details.checkIn),
-        checkOut: new Date(details.checkOut),
+        checkIn: details.checkIn,
+        checkOut: details.checkOut,
         roomType: details.roomType,
         numberOfGuests: details.numberOfGuests,
         totalAmount,

@@ -25,37 +25,24 @@ router.get("/alerts", verifyToken, async (req, res) => {
 
     const timezone = hotel?.timezone || "UTC";
 
-    const now = new Date();
-
-    const hotelNow = new Date(
-      now.toLocaleString("en-US", {
+    const today = new Date()
+      .toLocaleDateString("en-CA", {
         timeZone: timezone,
-      }),
-    );
+      });
 
-    const start = new Date(hotelNow);
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(hotelNow);
-    end.setHours(23, 59, 59, 999);
-
+    // Today's check-ins
     const todayCheckIns = await Booking.find({
       hotelId,
-      checkIn: {
-        $gte: start,
-        $lte: end,
-      },
+      checkIn: today,
       status: {
         $ne: "cancelled",
       },
     });
 
+    // Today's check-outs
     const todayCheckOuts = await Booking.find({
       hotelId,
-      checkOut: {
-        $gte: start,
-        $lte: end,
-      },
+      checkOut: today,
       status: {
         $ne: "cancelled",
       },
@@ -63,6 +50,7 @@ router.get("/alerts", verifyToken, async (req, res) => {
 
     const alerts = [];
 
+    // Check-ins
     todayCheckIns.forEach((booking) => {
       alerts.push({
         type: "checkin",
@@ -72,6 +60,7 @@ router.get("/alerts", verifyToken, async (req, res) => {
       });
     });
 
+    // Check-outs
     todayCheckOuts.forEach((booking) => {
       alerts.push({
         type: "checkout",
@@ -85,6 +74,7 @@ router.get("/alerts", verifyToken, async (req, res) => {
       success: true,
       alerts,
     });
+
   } catch (err) {
     console.error(err);
 
