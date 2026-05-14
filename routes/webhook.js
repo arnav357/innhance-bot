@@ -3737,22 +3737,19 @@ async function handleSmartBooking(
     },
   );
 
-  await sendText(
-    customerPhone,
-    `🎉 Booking Ready!
+  const confirmMessage = `🎉 Booking Ready!
 
 👤 ${data.name}
 🛏️ ${data.roomType}
-📅 ${new Date(data.checkIn).toDateString()}
-📅 ${new Date(data.checkOut).toDateString()}
+📅 ${data.checkIn}
+📅 ${data.checkOut}
 🏨 ${data.roomsCount} Rooms
 👥 ${data.guests} Guests
 💰 ₹${total}
 
-Choose payment method 😊`,
-    phoneNumberId,
-    token,
-  );
+Choose payment method 😊`;
+
+  await sendText(customerPhone, confirmMessage, phoneNumberId, token);
 
   await sendButtons(
     customerPhone,
