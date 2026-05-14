@@ -304,6 +304,13 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
     phoneNumberId,
     token,
   );
+  await saveMessage(
+    to,
+    hotel._id,
+    customer._id,
+    "assistant",
+    "📸 Here's a look at our rooms",
+  );
 
   if (hotel.rooms?.length) {
     for (const room of hotel.rooms) {
@@ -366,6 +373,13 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
     phoneNumberId,
     token,
   );
+  await saveMessage(
+    to,
+    hotel._id,
+    customer._id,
+    "assistant",
+    "[Sent: Room booking buttons]",
+  );
 }
 
 // ============================================================
@@ -426,6 +440,13 @@ async function sendPaymentQR(to, phoneNumberId, token, booking, hotel) {
 
     console.log(
       `✅ QR sent | Booking: ${bookingRef} | Note: ${transactionNote}`,
+    );
+    await saveMessage(
+      to,
+      hotel._id,
+      booking.customerId,
+      "assistant",
+      "[Sent: Payment QR]",
     );
     return transactionNote;
   } catch (err) {
@@ -1215,6 +1236,13 @@ _Ref: ${payment?.transactionNote || ""}_`;
     });
 
     if (interactiveId === "menu_banquet") {
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "user",
+        "[Selected: Banquet Facilities]",
+      );
       if (!hotel.banquetHalls?.length) {
         await sendText(
           customerPhone,
@@ -1230,6 +1258,14 @@ _Ref: ${payment?.transactionNote || ""}_`;
         "🎉 Here's a look at our banquet facilities 😊",
         phoneNumberId,
         token,
+      );
+
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "🎉 Here's a look at our banquet facilities 😊",
       );
 
       for (const banquet of hotel.banquetHalls) {
@@ -1256,6 +1292,13 @@ _Ref: ${payment?.transactionNote || ""}_`;
               phoneNumberId,
               token,
             );
+            await saveMessage(
+              customerPhone,
+              hotel._id,
+              customer._id,
+              "assistant",
+              `[Sent: Banquet Video - ${banquet.name}]`,
+            );
 
             await new Promise((resolve) => setTimeout(resolve, 1500));
           } else {
@@ -1265,6 +1308,13 @@ _Ref: ${payment?.transactionNote || ""}_`;
               banquet.name,
               phoneNumberId,
               token,
+            );
+            await saveMessage(
+              customerPhone,
+              hotel._id,
+              customer._id,
+              "assistant",
+              `[Sent: Banquet Image - ${banquet.name}]`,
             );
 
             await new Promise((resolve) => setTimeout(resolve, 700));
@@ -1349,6 +1399,13 @@ _Ref: ${payment?.transactionNote || ""}_`;
           phoneNumberId,
           token,
         );
+        await saveMessage(
+          customerPhone,
+          hotel._id,
+          customer._id,
+          "assistant",
+          "😊 May I know your full name?",
+        );
         return;
       }
 
@@ -1372,6 +1429,13 @@ _Ref: ${payment?.transactionNote || ""}_`;
         phoneNumberId,
         token,
       );
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "user",
+        "[Selected: Continue with bot]",
+      );
       return;
     }
 
@@ -1381,6 +1445,13 @@ _Ref: ${payment?.transactionNote || ""}_`;
         "👤 Sure 😊 Please stay connected. Our team will reply soon.",
         phoneNumberId,
         token,
+      );
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "user",
+        "[Selected: Stay Human]",
       );
       return;
     }
@@ -1526,6 +1597,14 @@ _Ref: ${payment?.transactionNote || ""}_`;
         phoneNumberId,
         token,
       );
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Back to bot option]",
+      );
+
       return;
     }
 
@@ -1533,6 +1612,16 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
     console.log(
       `📩 [${hotel.name}] [${customerPhone}] "${userMessage}" | id: "${interactiveId}"`,
+    );
+
+    await saveMessage(
+      customerPhone,
+      hotel._id,
+      customer._id,
+      "user",
+      interactiveId
+        ? `[Interactive: ${interactiveId}] ${userMessage}`
+        : userMessage,
     );
 
     let messageForIntent = userMessage;
@@ -1725,6 +1814,13 @@ _Ref: ${payment?.transactionNote || ""}_`;
         ],
         phoneNumberId,
         token,
+      );
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Payment pending options]",
       );
 
       return;
@@ -2282,7 +2378,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           phoneNumberId,
           token,
         );
-
+        await saveMessage(
+          customerPhone,
+          hotel._id,
+          customer._id,
+          "assistant",
+          "[Sent: Booking flow skipped]",
+        );
         return;
       }
 
@@ -2306,7 +2408,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           phoneNumberId,
           token,
         );
-
+        await saveMessage(
+          customerPhone,
+          hotel._id,
+          customer._id,
+          "assistant",
+          "[Sent: Booking flow skipped]",
+        );
         return;
       }
 
@@ -2329,6 +2437,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
             ],
             phoneNumberId,
             token,
+          );
+          await saveMessage(
+            customerPhone,
+            hotel._id,
+            customer._id,
+            "assistant",
+            "[Sent: Booking flow skipped]",
           );
 
           return;
@@ -2358,11 +2473,25 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         phoneNumberId,
         token,
       );
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Continuing old booking]",
+      );
 
       return;
     }
 
     if (interactiveId === "start_new_booking") {
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "user",
+        "[Selected: Start new booking]",
+      );
       await Booking.updateMany(
         {
           phone: { $in: [normalizedPhone, customerPhone] },
@@ -2389,6 +2518,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         },
       );
 
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Resuming booking]",
+      );
+
       await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
       return;
     }
@@ -2403,6 +2540,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       );
 
       await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Fresh booking initiated]",
+      );
       return;
     }
 
@@ -2412,6 +2556,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         "😊 Sure! Ask me anything about rooms, pricing, check-in, or facilities.",
         phoneNumberId,
         token,
+      );
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Ask question]",
       );
 
       return;
@@ -2427,6 +2578,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         hotel,
       );
       await sendText(customerPhone, reply, phoneNumberId, token);
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Special offers]",
+      );
       return;
     }
 
@@ -2440,6 +2598,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         hotel,
       );
       await sendText(customerPhone, reply, phoneNumberId, token);
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Check-in & check-out timings]",
+      );
       return;
     }
 
@@ -2453,6 +2618,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         hotel,
       );
       await sendText(customerPhone, reply, phoneNumberId, token);
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Contact info]",
+      );
       return;
     }
 
@@ -2482,6 +2654,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           phoneNumberId,
           token,
         );
+        await saveMessage(
+          customerPhone,
+          hotel._id,
+          customer._id,
+          "assistant",
+          "[Sent: Room not available]",
+        );
         return;
       }
       await Chat.findOneAndUpdate(
@@ -2502,6 +2681,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         `Great choice! 😊 You selected *${roomConfig.name}*.\n\nWhat's your full name?`,
         phoneNumberId,
         token,
+      );
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Room selected]",
       );
 
       return;
@@ -2571,7 +2757,13 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           expiresAt: new Date(Date.now() + 15 * 60 * 1000),
         });
       }
-
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Payment QR]",
+      );
       await sendPaymentQR(customerPhone, phoneNumberId, token, booking, hotel);
       return;
     }
@@ -2905,7 +3097,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     if (intent.type === "unknown") {
       await sendButtons(
         customerPhone,
-        "😔 Sorry, I couldn't understand that properly.\nWould you like to talk with our team?",
+        "😔 Sorry, I couldn't understand that properly. For better results, you can use buttons to interact with me more easily.\nWould you like to talk with our team?",
         [
           { id: "talk_human", title: "👤 Talk to Human" },
           { id: "continue_bot", title: "🤖 Continue with Bot" },
@@ -3259,9 +3451,16 @@ async function handleSmartBooking(
   if (missing === "checkIn") {
     await sendText(
       customerPhone,
-      "📅 What is your check-in date? 😊",
+      "📅 What is your check-in date? 😊. Please provide in the format DD/MM/YYYY for example 31/12/2026",
       phoneNumberId,
       token,
+    );
+    await saveMessage(
+      customerPhone,
+      hotel._id,
+      customer._id,
+      "assistant",
+      "📅 What is your check-in date?",
     );
     return;
   }
@@ -3269,9 +3468,16 @@ async function handleSmartBooking(
   if (missing === "checkOut") {
     await sendText(
       customerPhone,
-      "📅 What is your check-out date? 😊",
+      "📅 What is your check-out date? 😊. Please provide in the format DD/MM/YYYY for example 31/12/2026",
       phoneNumberId,
       token,
+    );
+    await saveMessage(
+      customerPhone,
+      hotel._id,
+      customer._id,
+      "assistant",
+      "📅 What is your check-out date?",
     );
     return;
   }
@@ -3283,6 +3489,13 @@ async function handleSmartBooking(
       phoneNumberId,
       token,
     );
+    await saveMessage(
+      customerPhone,
+      hotel._id,
+      customer._id,
+      "assistant",
+      "🏨 How many rooms would you like?",
+    );
     return;
   }
 
@@ -3293,11 +3506,25 @@ async function handleSmartBooking(
       phoneNumberId,
       token,
     );
+    await saveMessage(
+      customerPhone,
+      hotel._id,
+      customer._id,
+      "assistant",
+      "👥 How many guests?",
+    );
     return;
   }
 
   if (missing === "roomType") {
     await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
+    await saveMessage(
+      customerPhone,
+      hotel._id,
+      customer._id,
+      "assistant",
+      "[Sent: Room selection menu]",
+    );
     return;
   }
 
@@ -3432,7 +3659,7 @@ async function handleSmartBooking(
   });
 
   if (!availability.available) {
-      const remaining = Math.max(0, availability.remainingRooms);
+    const remaining = Math.max(0, availability.remainingRooms);
 
     // RESET BOOKING FLOW
     await Chat.findOneAndUpdate(
@@ -3450,17 +3677,17 @@ async function handleSmartBooking(
       },
     );
     await sendButtons(
-    customerPhone,
-    `❌ Sorry, only ${remaining} room(s) are available for those dates.\n\nWould you like to try different dates or start a new booking? 😊`,
-    [
-      { id: "menu_book", title: "🛏️ Book Again" },
-      { id: "menu_rooms", title: "🏨 View Rooms" },
-    ],
-    phoneNumberId,
-    token,
-  );
+      customerPhone,
+      `❌ Sorry, only ${remaining} room(s) are available for those dates.\n\nWould you like to try different dates or start a new booking? 😊`,
+      [
+        { id: "menu_book", title: "🛏️ Book Again" },
+        { id: "menu_rooms", title: "🏨 View Rooms" },
+      ],
+      phoneNumberId,
+      token,
+    );
 
-  return;
+    return;
   }
 
   const booking = await Booking.create({
@@ -3536,5 +3763,12 @@ Choose payment method 😊`,
     ],
     phoneNumberId,
     token,
+  );
+  await saveMessage(
+    customerPhone,
+    hotel._id,
+    customer._id,
+    "assistant",
+    confirmMessage,
   );
 }
