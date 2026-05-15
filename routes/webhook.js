@@ -721,36 +721,33 @@ async function isFirstMessage(phone, hotelId) {
 }
 
 function parseDate(input) {
-  const parts = input.trim().split("/");
+  const parsed = parseDDMMYYYY(input);
 
-  if (parts.length !== 3) return null;
+  if (!parsed) return null;
 
-  const [day, month, year] = parts.map(Number);
+  const date = new Date(parsed);
 
-  if (!day || !month || !year) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  const currentYear = new Date().getFullYear();
+  date.setHours(0, 0, 0, 0);
 
-  // allow bookings only this year to next 5 years
-  if (year < currentYear || year > currentYear + 5) return null;
+  const currentYear = today.getFullYear();
 
-  const date = new Date(year, month - 1, day);
-
+  // allow only current year to next 5 years
   if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
+    date.getFullYear() < currentYear ||
+    date.getFullYear() > currentYear + 5
   ) {
     return null;
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  date.setHours(0, 0, 0, 0);
+  // prevent past dates
+  if (date < today) {
+    return null;
+  }
 
-  if (date < today) return null;
-
-  return date.toISOString().split("T")[0];
+  return parsed;
 }
 
 // ============================================================
@@ -3347,13 +3344,13 @@ async function handleSmartBooking(
   // If classifier gives generic date
 
   if (fields.date) {
-    const parsedDate = parseDDMMYYYY(fields.date);
+    const parsedDate = parseDate(fields.date);
 
     // invalid date
     if (!parsedDate) {
       await sendText(
         customerPhone,
-        "📅 Please enter a valid date like 29/04/2026 😊",
+        "📅 Please enter a valid date 😊",
         phoneNumberId,
         token,
       );
