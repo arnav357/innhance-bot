@@ -24,6 +24,7 @@ greeting
 unknown
 banquet
 command
+room_availability
 
 Current missing booking field: ${currentMissing || "none"}
 
@@ -38,6 +39,8 @@ guests
 date
 roomType
 roomsCount
+checkIn
+checkOut
 
 For example: Tarak mehta book for 3 guests on 04/05/2026
 type = booking
@@ -138,6 +141,30 @@ photo bhejo = show_rooms
 
 17. If unsure:
 type = unknown
+
+18. If user asks availability, vacancy, available rooms, stay availability,
+or asks prices for specific dates:
+Examples:
+"Is room available tomorrow?"
+"Availability for 24 may to 25 may"
+"Do you have rooms on 5 June?"
+"Can I stay from 24 to 25 May?"
+"Available rooms and price?"
+"Any vacancy?"
+type = room_availability
+Extract if available:
+fields.checkIn
+fields.checkOut
+fields.roomType
+fields.guests
+If user provides a date range with room availability query:
+Examples:
+24 May to 25 May
+24/05/2026 - 25/05/2026
+from 24 May until 25 May
+type = room_availability
+fields.checkIn = first date
+fields.checkOut = second date
 
 RETURN JSON only.
 `;
