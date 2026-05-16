@@ -229,11 +229,11 @@ async function sendMainMenu(to, phoneNumberId, token, hotel) {
   }
 
   // Existing human support option
-  // rows.push({
-  //   id: "talk_human",
-  //   title: "👤 Talk to Human",
-  //   description: "Chat with our team directly",
-  // });
+  rows.push({
+    id: "talk_human",
+    title: "👤 Talk to Human",
+    description: "Chat with our team directly",
+  });
 
   await sendList(
     to,
@@ -803,7 +803,7 @@ async function getSmartReply(
   hotel,
 ) {
   try {
-    await saveMessage(phone, hotelId, customerId, "user", userMessage, hotel.timezone);
+    // await saveMessage(phone, hotelId, customerId, "user", userMessage, hotel.timezone);
     const history = await getHistory(phone, hotelId);
     const language = detectLanguage(userMessage);
 
@@ -1195,13 +1195,13 @@ We look forward to hosting you. See you soon! 😊
 _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_
 _Ref: ${payment?.transactionNote || ""}_`;
 
-        await saveMessage(
-          customerPhone,
-          hotel._id,
-          customer._id,
-          "user",
-          "[Sent: Payment screenshot]",
-        );
+        // await saveMessage(
+        //   customerPhone,
+        //   hotel._id,
+        //   customer._id,
+        //   "user",
+        //   "[Sent: Payment screenshot]",
+        // );
         await saveMessage(
           customerPhone,
           hotel._id,
@@ -1222,14 +1222,14 @@ _Ref: ${payment?.transactionNote || ""}_`;
         else if (!result.amountMatch)
           failReason = `Amount on screenshot (₹${result.extracted?.amountPaid}) doesn't match booking total ₹${result.expectedAmount}. Please check and send correct screenshot. 🙏`;
 
-        await saveMessage(
-          customerPhone,
-          hotel._id,
-          customer._id,
-          "user",
-          "[Sent: Payment screenshot]",
-          hotel.timezone
-        );
+        // await saveMessage(
+        //   customerPhone,
+        //   hotel._id,
+        //   customer._id,
+        //   "user",
+        //   "[Sent: Payment screenshot]",
+        //   hotel.timezone
+        // );
         await saveMessage(
           customerPhone,
           hotel._id,
@@ -1277,14 +1277,14 @@ _Ref: ${payment?.transactionNote || ""}_`;
     });
 
     if (interactiveId === "menu_banquet") {
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        "[Selected: Banquet Facilities]",
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   "[Selected: Banquet Facilities]",
+      //   hotel.timezone
+      // );
       if (!hotel.banquetHalls?.length) {
         await sendText(
           customerPhone,
@@ -1475,14 +1475,14 @@ _Ref: ${payment?.transactionNote || ""}_`;
         phoneNumberId,
         token,
       );
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        "[Selected: Continue with bot]",
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   "[Selected: Continue with bot]",
+      //   hotel.timezone
+      // );
       return;
     }
 
@@ -1493,26 +1493,26 @@ _Ref: ${payment?.transactionNote || ""}_`;
         phoneNumberId,
         token,
       );
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        "[Selected: Stay Human]",
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   "[Selected: Stay Human]",
+      //   hotel.timezone
+      // );
       return;
     }
 
     if (interactiveId === "talk_human") {
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        "[User]: Talk to Human",
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   "[User]: Talk to Human",
+      //   hotel.timezone
+      // );
 
       await Chat.findOneAndUpdate(
         { phone: customerPhone, hotelId: hotel._id },
@@ -1599,14 +1599,14 @@ _Ref: ${payment?.transactionNote || ""}_`;
     }
 
     if (interactiveId === "back_to_bot") {
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        "[User]: Back to Bot",
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   "[User]: Back to Bot",
+      //   hotel.timezone
+      // );
 
       await Chat.findOneAndUpdate(
         { phone: customerPhone, hotelId: hotel._id },
@@ -1641,14 +1641,14 @@ _Ref: ${payment?.transactionNote || ""}_`;
         message.interactive?.list_reply?.title ||
         "interaction";
 
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        "[User]: " + incomingText,
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   "[User]: " + incomingText,
+      //   hotel.timezone
+      // );
 
       // 🔘 Always show "Back to Bot" option
       await sendButtons(
@@ -2265,14 +2265,14 @@ _Ref: ${payment?.transactionNote || ""}_`;
         userMessage,
       )
     ) {
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        userMessage,
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   userMessage,
+      //   hotel.timezone
+      // );
 
       const booking = await Booking.findOne({
         phone: { $in: [normalizedPhone, customerPhone] },
@@ -2367,14 +2367,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       /^(menu|main menu|start|help|options|back to menu)\b/i.test(userMessage);
 
     if ((firstTime && isGreeting) || isMenuRequest) {
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        userMessage,
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   userMessage,
+      //   hotel.timezone
+      // );
       await sendMainMenu(customerPhone, phoneNumberId, token, hotel);
       await saveMessage(
         customerPhone,
@@ -2391,14 +2391,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     // HANDLER 4: Interactive menu selections
     // ══════════════════════════════════════════════════════════
     if (interactiveId === "menu_rooms") {
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        "I want to see the rooms",
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   "I want to see the rooms",
+      //   hotel.timezone
+      // );
       await sendRoomPhotos(customerPhone, phoneNumberId, token, hotel);
       await saveMessage(
         customerPhone,
@@ -2412,14 +2412,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     }
 
     if (interactiveId === "menu_book" || interactiveId === "photo_book") {
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        "I want to book a room",
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   "I want to book a room",
+      //   hotel.timezone
+      // );
 
       // 🔍 Get latest booking
       const latestBooking = await Booking.findOne({
@@ -2561,14 +2561,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     }
 
     if (interactiveId === "start_new_booking") {
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        "[Selected: Start new booking]",
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   "[Selected: Start new booking]",
+      //   hotel.timezone
+      // );
       await Booking.updateMany(
         {
           phone: { $in: [normalizedPhone, customerPhone] },
@@ -3202,14 +3202,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         userMessage,
       )
     ) {
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        userMessage,
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   userMessage,
+      //   hotel.timezone
+      // );
       await sendRoomPhotos(customerPhone, phoneNumberId, token, hotel);
       await saveMessage(
         customerPhone,
@@ -3230,14 +3230,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         userMessage,
       )
     ) {
-      await saveMessage(
-        customerPhone,
-        hotel._id,
-        customer._id,
-        "user",
-        userMessage,
-        hotel.timezone
-      );
+      // await saveMessage(
+      //   customerPhone,
+      //   hotel._id,
+      //   customer._id,
+      //   "user",
+      //   userMessage,
+      //   hotel.timezone
+      // );
 
       // ✅ Only confirmed booking
       const booking = await Booking.findOne({
