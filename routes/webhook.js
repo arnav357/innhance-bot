@@ -229,11 +229,11 @@ async function sendMainMenu(to, phoneNumberId, token, hotel) {
   }
 
   // Existing human support option
-  rows.push({
-    id: "talk_human",
-    title: "👤 Talk to Human",
-    description: "Chat with our team directly",
-  });
+  // rows.push({
+  //   id: "talk_human",
+  //   title: "👤 Talk to Human",
+  //   description: "Chat with our team directly",
+  // });
 
   await sendList(
     to,
@@ -310,6 +310,7 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
     customer._id,
     "assistant",
     "📸 Here's a look at our rooms",
+    hotel.timezone
   );
 
   if (hotel.rooms?.length) {
@@ -379,6 +380,7 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
     customer._id,
     "assistant",
     "[Sent: Room booking buttons]",
+    hotel.timezone
   );
 }
 
@@ -447,6 +449,7 @@ async function sendPaymentQR(to, phoneNumberId, token, booking, hotel) {
       booking.customerId,
       "assistant",
       "[Sent: Payment QR]",
+      hotel.timezone
     );
     return transactionNote;
   } catch (err) {
@@ -658,11 +661,28 @@ function parseIndianTxnDateTime(dateStr, timeStr) {
 // DATABASE FUNCTIONS
 // ============================================================
 
-async function saveMessage(phone, hotelId, customerId, role, content) {
+async function saveMessage(
+  phone,
+  hotelId,
+  customerId,
+  role,
+  content,
+  hotelTimezone = "Asia/Kolkata",
+) {
   try {
-    const time = new Date().toLocaleTimeString("en-US", {
+    const now = new Date();
+
+    const time = now.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: hotelTimezone,
+    });
+
+    const date = now.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone: hotelTimezone,
     });
     await Chat.updateOne(
       { phone, hotelId },
@@ -676,10 +696,31 @@ async function saveMessage(phone, hotelId, customerId, role, content) {
         },
         $set: {
           customerId,
+
           lastMessage: String(content).substring(0, 120),
-          time: "Just now",
+
+          // formatted hotel-local time
+          time,
+
+          // formatted hotel-local date
+          lastMessageDate: date,
+
+          // actual UTC timestamp
+          lastMessageTimestamp: now,
         },
-        $push: { messages: { role, content, time } },
+        $push: {
+          messages: {
+            role,
+            content,
+
+            // formatted hotel-local
+            time,
+            date,
+
+            // actual UTC timestamp
+            timestamp: now,
+          },
+        },
         ...(role === "user" ? { $inc: { unread: 1 } } : {}),
       },
       { upsert: true },
@@ -762,7 +803,7 @@ async function getSmartReply(
   hotel,
 ) {
   try {
-    await saveMessage(phone, hotelId, customerId, "user", userMessage);
+    await saveMessage(phone, hotelId, customerId, "user", userMessage, hotel.timezone);
     const history = await getHistory(phone, hotelId);
     const language = detectLanguage(userMessage);
 
@@ -811,7 +852,7 @@ async function getSmartReply(
     });
 
     const reply = completion.choices[0].message.content.trim();
-    await saveMessage(phone, hotelId, customerId, "assistant", reply);
+    await saveMessage(phone, hotelId, customerId, "assistant", reply, hotel.timezone);
     return reply;
   } catch (err) {
     console.error("❌ getSmartReply error:", err.message);
@@ -1167,6 +1208,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
           customer._id,
           "assistant",
           confirmMsg,
+          hotel.timezone
         );
         await sendText(customerPhone, confirmMsg, phoneNumberId, token);
       } else {
@@ -1186,6 +1228,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
           customer._id,
           "user",
           "[Sent: Payment screenshot]",
+          hotel.timezone
         );
         await saveMessage(
           customerPhone,
@@ -1193,6 +1236,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
           customer._id,
           "assistant",
           `❌ ${failReason}`,
+          hotel.timezone
         );
         await sendText(customerPhone, `❌ ${failReason}`, phoneNumberId, token);
       }
@@ -1239,6 +1283,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customer._id,
         "user",
         "[Selected: Banquet Facilities]",
+        hotel.timezone
       );
       if (!hotel.banquetHalls?.length) {
         await sendText(
@@ -1263,6 +1308,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customer._id,
         "assistant",
         "🎉 Here's a look at our banquet facilities 😊",
+        hotel.timezone
       );
 
       for (const banquet of hotel.banquetHalls) {
@@ -1295,6 +1341,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
               customer._id,
               "assistant",
               `[Sent: Banquet Video - ${banquet.name}]`,
+              hotel.timezone
             );
 
             await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -1312,6 +1359,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
               customer._id,
               "assistant",
               `[Sent: Banquet Image - ${banquet.name}]`,
+              hotel.timezone
             );
 
             await new Promise((resolve) => setTimeout(resolve, 700));
@@ -1402,6 +1450,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
           customer._id,
           "assistant",
           "😊 May I know your full name?",
+          hotel.timezone
         );
         return;
       }
@@ -1432,6 +1481,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customer._id,
         "user",
         "[Selected: Continue with bot]",
+        hotel.timezone
       );
       return;
     }
@@ -1449,6 +1499,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customer._id,
         "user",
         "[Selected: Stay Human]",
+        hotel.timezone
       );
       return;
     }
@@ -1460,6 +1511,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customer._id,
         "user",
         "[User]: Talk to Human",
+        hotel.timezone
       );
 
       await Chat.findOneAndUpdate(
@@ -1474,11 +1526,12 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customer._id,
         "assistant",
         "👤 You're now connected to our team.",
+        hotel.timezone
       );
 
       await sendText(
         customerPhone,
-        "👤 You're now connected to our team. Someone will reply shortly 😊",
+        "👤 You will be connected to our team. Someone will reply shortly. You will notify you within two minutes. Thanks for the cooperation.😊",
         phoneNumberId,
         token,
       );
@@ -1526,6 +1579,14 @@ _Ref: ${payment?.transactionNote || ""}_`;
                 phoneNumberId,
                 token,
               );
+              await saveMessage(
+                customerPhone,
+                hotel._id,
+                customer._id,
+                "assistant",
+                "[Sent: 👤 Our team seems busy right now.\nWould you like me to continue helping you?]",
+                hotel.timezone
+              );
             }
           } catch (err) {
             console.log("Human timeout check error:", err.message);
@@ -1544,6 +1605,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customer._id,
         "user",
         "[User]: Back to Bot",
+        hotel.timezone
       );
 
       await Chat.findOneAndUpdate(
@@ -1557,6 +1619,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customer._id,
         "assistant",
         "🤖 Bot resumed",
+        hotel.timezone
       );
 
       await sendText(
@@ -1584,6 +1647,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customer._id,
         "user",
         "[User]: " + incomingText,
+        hotel.timezone
       );
 
       // 🔘 Always show "Back to Bot" option
@@ -1600,6 +1664,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customer._id,
         "assistant",
         "[Sent: Back to bot option]",
+        hotel.timezone
       );
 
       return;
@@ -1619,6 +1684,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
       interactiveId
         ? `[Interactive: ${interactiveId}] ${userMessage}`
         : userMessage,
+      hotel.timezone
     );
 
     let messageForIntent = userMessage;
@@ -1818,6 +1884,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customer._id,
         "assistant",
         "[Sent: Payment pending options]",
+        hotel.timezone
       );
 
       return;
@@ -2194,7 +2261,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
     // HANDLER 2: Pay at desk
     // ══════════════════════════════════════════════════════════
     if (
-      /\b(pay at desk|pay at hotel|pay on arrival|cash at hotel|paying at desk|will pay at desk|pay when i arrive|pay there|at desk|at the desk)\b/i.test(
+      /\b(pay at desk|pay at hotel|pay on arrival|cash at hotel|paying at desk|will pay at desk|pay when i arrive|pay there|at desk|at the desk| hotel me paise dunga| hotel me le lena| payment hotel pe hoga)\b/i.test(
         userMessage,
       )
     ) {
@@ -2204,6 +2271,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customer._id,
         "user",
         userMessage,
+        hotel.timezone
       );
 
       const booking = await Booking.findOne({
@@ -2270,6 +2338,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           customer._id,
           "assistant",
           confirmMsg,
+          hotel.timezone
         );
         await sendText(customerPhone, confirmMsg, phoneNumberId, token);
       } else {
@@ -2304,6 +2373,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "user",
         userMessage,
+        hotel.timezone
       );
       await sendMainMenu(customerPhone, phoneNumberId, token, hotel);
       await saveMessage(
@@ -2312,6 +2382,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Main Menu]",
+        hotel.timezone
       );
       return;
     }
@@ -2326,6 +2397,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "user",
         "I want to see the rooms",
+        hotel.timezone
       );
       await sendRoomPhotos(customerPhone, phoneNumberId, token, hotel);
       await saveMessage(
@@ -2334,6 +2406,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Room photos]",
+        hotel.timezone
       );
       return;
     }
@@ -2345,6 +2418,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "user",
         "I want to book a room",
+        hotel.timezone
       );
 
       // 🔍 Get latest booking
@@ -2381,6 +2455,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           customer._id,
           "assistant",
           "[Sent: Booking flow skipped]",
+          hotel.timezone
         );
         return;
       }
@@ -2411,6 +2486,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           customer._id,
           "assistant",
           "[Sent: Booking flow skipped]",
+          hotel.timezone
         );
         return;
       }
@@ -2441,6 +2517,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
             customer._id,
             "assistant",
             "[Sent: Booking flow skipped]",
+            hotel.timezone
           );
 
           return;
@@ -2458,6 +2535,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Room selection menu]",
+        hotel.timezone
       );
 
       return;
@@ -2476,6 +2554,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Continuing old booking]",
+        hotel.timezone
       );
 
       return;
@@ -2488,6 +2567,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "user",
         "[Selected: Start new booking]",
+        hotel.timezone
       );
       await Booking.updateMany(
         {
@@ -2521,6 +2601,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Resuming booking]",
+        hotel.timezone
       );
 
       await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
@@ -2543,6 +2624,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Fresh booking initiated]",
+        hotel.timezone
       );
       return;
     }
@@ -2560,6 +2642,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Ask question]",
+        hotel.timezone
       );
 
       return;
@@ -2581,6 +2664,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Special offers]",
+        hotel.timezone
       );
       return;
     }
@@ -2601,6 +2685,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Check-in & check-out timings]",
+        hotel.timezone
       );
       return;
     }
@@ -2621,6 +2706,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Contact info]",
+        hotel.timezone
       );
       return;
     }
@@ -2657,6 +2743,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           customer._id,
           "assistant",
           "[Sent: Room not available]",
+          hotel.timezone
         );
         return;
       }
@@ -2685,6 +2772,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Room selected]",
+        hotel.timezone
       );
 
       return;
@@ -2760,6 +2848,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Payment QR]",
+        hotel.timezone
       );
       await sendPaymentQR(customerPhone, phoneNumberId, token, booking, hotel);
       return;
@@ -3119,6 +3208,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "user",
         userMessage,
+        hotel.timezone
       );
       await sendRoomPhotos(customerPhone, phoneNumberId, token, hotel);
       await saveMessage(
@@ -3127,6 +3217,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Room photos]",
+        hotel.timezone
       );
       return;
     }
@@ -3145,6 +3236,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "user",
         userMessage,
+        hotel.timezone
       );
 
       // ✅ Only confirmed booking
@@ -3213,6 +3305,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         customer._id,
         "assistant",
         "[Sent: Payment QR]",
+        hotel.timezone
       );
 
       return;
@@ -3442,6 +3535,14 @@ async function handleSmartBooking(
       phoneNumberId,
       token,
     );
+    await saveMessage(
+      customerPhone,
+      hotel._id,
+      customer._id,
+      "assistant",
+      "😊 May I know your full name?",
+      hotel.timezone
+    );
     return;
   }
 
@@ -3458,6 +3559,7 @@ async function handleSmartBooking(
       customer._id,
       "assistant",
       "📅 What is your check-in date?",
+      hotel.timezone
     );
     return;
   }
@@ -3475,6 +3577,7 @@ async function handleSmartBooking(
       customer._id,
       "assistant",
       "📅 What is your check-out date?",
+      hotel.timezone
     );
     return;
   }
@@ -3492,6 +3595,7 @@ async function handleSmartBooking(
       customer._id,
       "assistant",
       "🏨 How many rooms would you like?",
+      hotel.timezone
     );
     return;
   }
@@ -3509,6 +3613,7 @@ async function handleSmartBooking(
       customer._id,
       "assistant",
       "👥 How many guests?",
+      hotel.timezone
     );
     return;
   }
@@ -3521,6 +3626,7 @@ async function handleSmartBooking(
       customer._id,
       "assistant",
       "[Sent: Room selection menu]",
+      hotel.timezone
     );
     return;
   }
@@ -3764,5 +3870,6 @@ Choose payment method 😊`;
     customer._id,
     "assistant",
     confirmMessage,
+    hotel.timezone
   );
 }

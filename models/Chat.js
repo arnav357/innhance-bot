@@ -11,12 +11,23 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  // formatted hotel-local time
   time: {
-    type: String, // Stores time like "10:00 AM"
+    type: String,
+  },
+
+  // formatted hotel-local date
+  date: {
+    type: String,
+  },
+
+  // actual UTC timestamp
+  timestamp: {
+    type: Date,
+    default: Date.now,
   },
 });
 
-// Schema for the entire conversation
 const chatSchema = new mongoose.Schema(
   {
     name: { type: String, default: "New Customer" },
@@ -27,7 +38,20 @@ const chatSchema = new mongoose.Schema(
       required: true,
     },
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: "Customer" },
-    lastMessage: { type: String, default: "" },
+    // hotel-local formatted time
+    time: { type: String, default: "" },
+
+    // hotel-local formatted date
+    lastMessageDate: {
+      type: String,
+      default: "",
+    },
+
+    // actual UTC timestamp
+    lastMessageTimestamp: {
+      type: Date,
+      default: Date.now,
+    },
     time: { type: String, default: "Just now" }, // e.g., "2 min ago" or "10:05 AM"
     unread: { type: Number, default: 0 },
     status: {
@@ -53,7 +77,7 @@ const chatSchema = new mongoose.Schema(
       data: {
         name: String,
         roomType: String,
-        planName:String,
+        planName: String,
         checkIn: String,
         checkOut: String,
         roomsCount: Number,
