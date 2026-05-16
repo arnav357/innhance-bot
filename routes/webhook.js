@@ -1676,16 +1676,6 @@ _Ref: ${payment?.transactionNote || ""}_`;
       `📩 [${hotel.name}] [${customerPhone}] "${userMessage}" | id: "${interactiveId}"`,
     );
 
-    await saveMessage(
-      customerPhone,
-      hotel._id,
-      customer._id,
-      "user",
-      interactiveId
-        ? `[Interactive: ${interactiveId}] ${userMessage}`
-        : userMessage,
-      hotel.timezone
-    );
 
     let messageForIntent = userMessage;
 
@@ -2359,6 +2349,18 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     // HANDLER 3: First message / Greeting → Main Menu
     // ══════════════════════════════════════════════════════════
     const firstTime = await isFirstMessage(customerPhone, hotel._id);
+
+    await saveMessage(
+      customerPhone,
+      hotel._id,
+      customer._id,
+      "user",
+      interactiveId
+        ? `[Interactive: ${interactiveId}] ${userMessage}`
+        : userMessage,
+      hotel.timezone
+    );
+    
     const isGreeting =
       /^(hi|hii|hiii|hello|hey|helo|hola|good morning|good evening|good afternoon|namaste|namaskar|start|menu)\b/i.test(
         userMessage,
