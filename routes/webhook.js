@@ -235,11 +235,12 @@ async function sendMainMenu(to, phoneNumberId, token, hotel) {
   //   description: "Chat with our team directly",
   // });
 
+  
   rows.push({
     id: "ask_question",
     title: "🙋 Ask a Question",
     description:
-      "I will try to answer based on hotel info, or connect you to human support if needed",
+      "I will try to answer based on hotel information",
   });
 
   await sendList(
