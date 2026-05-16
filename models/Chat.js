@@ -65,6 +65,7 @@ const chatSchema = new mongoose.Schema(
         "booked",
         "cancelled",
         "human_support",
+        "availability_in_progress",
       ],
       default: "inquiry",
     },

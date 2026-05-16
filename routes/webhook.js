@@ -1700,10 +1700,10 @@ _Ref: ${payment?.transactionNote || ""}_`;
     const bookingActive = freshChat?.bookingFlow?.active;
     const availabilityActive = freshChat?.availabilityFlow?.active;
     const availabilityData = freshChat?.availabilityFlow?.data || {};
-    const currentMissing = bookingActive
-      ? getMissing(freshChat.bookingFlow.data || {}, hotel)
-      : null;
-
+    const currentMissing =
+      bookingActive && !availabilityActive
+        ? getMissing(freshChat.bookingFlow.data || {}, hotel)
+        : null;
     // // If waiting for guests and user typed only number
     // if (bookingActive && /^\d{1,2}$/.test(userMessage.trim())) {
     //   const n = userMessage.trim();
@@ -1732,7 +1732,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
     let intent;
 
     // ROOMS COUNT deterministic
-    if (bookingActive && currentMissing === "roomsCount") {
+    if (bookingActive &&  !availabilityActive && currentMissing === "roomsCount") {
       const match = userMessage.trim().match(/^(\d{1,2})(?:\s*room[s]?)?$/i);
 
       if (match) {
@@ -1751,6 +1751,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
     if (
       !intent &&
       bookingActive &&
+      !availabilityActive &&
       currentMissing === "guests" &&
       currentMissing !== "roomsCount"
     ) {
@@ -1857,6 +1858,21 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
       const mergedData = mergeBooking(currentData, intent.fields || {});
 
+      // STRICT FORMAT ENFORCEMENT
+      if (
+        mergedData.checkIn &&
+        !/^\d{2}\/\d{2}\/\d{4}$/.test(mergedData.checkIn)
+      ) {
+        delete mergedData.checkIn;
+      }
+
+      if (
+        mergedData.checkOut &&
+        !/^\d{2}\/\d{2}\/\d{4}$/.test(mergedData.checkOut)
+      ) {
+        delete mergedData.checkOut;
+      }
+
       // save flow
       await Chat.findOneAndUpdate(
         {
@@ -1868,6 +1884,12 @@ _Ref: ${payment?.transactionNote || ""}_`;
             active: true,
             data: mergedData,
           },
+          bookingFlow: {
+            active: false,
+            data: {},
+          },
+
+          status: "availability_in_progress",
         },
       );
 
@@ -1950,9 +1972,9 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customerPhone,
         `Great news 😊\n\nWe have these rooms available:\n\n${availableRooms.join("\n\n")}\n\nWould you like to continue with booking?`,
         [
-            { id: "start_new_booking", title: "YES" },
-            { id: "talk_human", title: "👤 Talk to Human" },
-          ],
+          { id: "start_new_booking", title: "YES" },
+          { id: "talk_human", title: "👤 Talk to Human" },
+        ],
         phoneNumberId,
         token,
       );
@@ -3111,7 +3133,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         hotel,
       );
       await sendText(customerPhone, reply, phoneNumberId, token);
-      await saveMessage(customerPhone, hotel._id, customer._id, "assistant", "[Sent: Ask question]", hotel.timezone);
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Ask question]",
+        hotel.timezone,
+      );
       return;
     }
 
@@ -3343,7 +3372,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
             phoneNumberId,
             token,
           );
-          await saveMessage(customerPhone, hotel._id, customer._id, "assistant", "[Sent: Connecting to human]", hotel.timezone);
+          await saveMessage(
+            customerPhone,
+            hotel._id,
+            customer._id,
+            "assistant",
+            "[Sent: Connecting to human]",
+            hotel.timezone,
+          );
 
           return;
         }
@@ -3358,7 +3394,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
             phoneNumberId,
             token,
           );
-          await saveMessage(customerPhone, hotel._id, customer._id, "assistant", "[Sent: Room photos sent]", hotel.timezone);
+          await saveMessage(
+            customerPhone,
+            hotel._id,
+            customer._id,
+            "assistant",
+            "[Sent: Room photos sent]",
+            hotel.timezone,
+          );
           return;
         }
 
@@ -3379,7 +3422,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
               phoneNumberId,
               token,
             );
-            await saveMessage(customerPhone, hotel._id, customer._id, "assistant", `${answer}`, hotel.timezone);
+            await saveMessage(
+              customerPhone,
+              hotel._id,
+              customer._id,
+              "assistant",
+              `${answer}`,
+              hotel.timezone,
+            );
           } else {
             await sendButtons(
               customerPhone,
@@ -3391,7 +3441,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
               phoneNumberId,
               token,
             );
-            await saveMessage(customerPhone, hotel._id, customer._id, "assistant","I'm not able to answer that right now 😊 Would you like to talk with our team directly?", hotel.timezone);
+            await saveMessage(
+              customerPhone,
+              hotel._id,
+              customer._id,
+              "assistant",
+              "I'm not able to answer that right now 😊 Would you like to talk with our team directly?",
+              hotel.timezone,
+            );
           }
 
           return;
