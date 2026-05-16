@@ -235,12 +235,10 @@ async function sendMainMenu(to, phoneNumberId, token, hotel) {
   //   description: "Chat with our team directly",
   // });
 
-  
   rows.push({
     id: "ask_question",
     title: "🙋 Ask a Question",
-    description:
-      "I will try to answer based on hotel information",
+    description: "I will try to answer based on hotel information",
   });
 
   await sendList(
@@ -1700,6 +1698,8 @@ _Ref: ${payment?.transactionNote || ""}_`;
     });
 
     const bookingActive = freshChat?.bookingFlow?.active;
+    const availabilityActive = freshChat?.availabilityFlow?.active;
+    const availabilityData = freshChat?.availabilityFlow?.data || {};
     const currentMissing = bookingActive
       ? getMissing(freshChat.bookingFlow.data || {}, hotel)
       : null;
@@ -1716,6 +1716,18 @@ _Ref: ${payment?.transactionNote || ""}_`;
     //     messageForIntent = `${n} room${n === "1" ? "" : "s"}`;
     //   }
     // }
+
+    let availabilityMissing = null;
+
+    if (availabilityActive) {
+      if (!availabilityData.checkIn) {
+        availabilityMissing = "checkIn";
+      } else if (!availabilityData.checkOut) {
+        availabilityMissing = "checkOut";
+      } else if (!availabilityData.roomsCount) {
+        availabilityMissing = "roomsCount";
+      }
+    }
 
     let intent;
 
@@ -1760,6 +1772,75 @@ _Ref: ${payment?.transactionNote || ""}_`;
       }
     }
 
+    if (availabilityActive && availabilityMissing === "checkIn") {
+      const parsed = parseDDMMYYYY(userMessage);
+
+      if (!parsed) {
+        await sendText(
+          customerPhone,
+          "😊 Please enter check-in date in DD/MM/YYYY format.\nExample: 28/05/2026",
+          phoneNumberId,
+          token,
+        );
+
+        return;
+      }
+
+      intent = {
+        type: "room_availability",
+        confidence: 1,
+        fields: {
+          checkIn: parsed,
+        },
+      };
+    }
+
+    if (!intent && availabilityActive && availabilityMissing === "checkOut") {
+      const parsed = parseDDMMYYYY(userMessage);
+
+      if (!parsed) {
+        await sendText(
+          customerPhone,
+          "😊 Please enter check-out date in DD/MM/YYYY format.\nExample: 29/05/2026",
+          phoneNumberId,
+          token,
+        );
+
+        return;
+      }
+
+      intent = {
+        type: "room_availability",
+        confidence: 1,
+        fields: {
+          checkOut: parsed,
+        },
+      };
+    }
+
+    if (!intent && availabilityActive && availabilityMissing === "roomsCount") {
+      const match = userMessage.trim().match(/^(\d{1,2})(?:\s*room[s]?)?$/i);
+
+      if (!match) {
+        await sendText(
+          customerPhone,
+          "😊 Please enter how many rooms you need.\nExample: 2 rooms",
+          phoneNumberId,
+          token,
+        );
+
+        return;
+      }
+
+      intent = {
+        type: "room_availability",
+        confidence: 1,
+        fields: {
+          roomsCount: parseInt(match[1]),
+        },
+      };
+    }
+
     // fallback GPT
     if (!intent) {
       intent = await classifyIntent(messageForIntent, currentMissing);
@@ -1794,7 +1875,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
       if (!mergedData.checkIn) {
         await sendText(
           customerPhone,
-          "😊 What would be your check-in date?",
+          "😊 What would be your check-in date? Please enter in DD/MM/YYYY format.\nExample: 28/05/2026",
           phoneNumberId,
           token,
         );
@@ -1805,10 +1886,22 @@ _Ref: ${payment?.transactionNote || ""}_`;
       if (!mergedData.checkOut) {
         await sendText(
           customerPhone,
-          "😊 What would be your check-out date?",
+          "😊 What would be your check-out date? Please enter in DD/MM/YYYY format.\nExample: 29/05/2026",
           phoneNumberId,
           token,
         );
+        return;
+      }
+
+      // ask rooms count if missing
+      if (!mergedData.roomsCount) {
+        await sendText(
+          customerPhone,
+          "😊 How many rooms would you like?",
+          phoneNumberId,
+          token,
+        );
+
         return;
       }
 
@@ -1820,7 +1913,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
           roomType: room.name,
           checkIn: new Date(mergedData.checkIn),
           checkOut: new Date(mergedData.checkOut),
-          requestedRooms: 1,
+          requestedRooms: mergedData.roomsCount,
         });
 
         if (result.available) {
@@ -1840,16 +1933,36 @@ _Ref: ${payment?.transactionNote || ""}_`;
           phoneNumberId,
           token,
         );
+        await saveMessage(
+          customerPhone,
+          hotel._id,
+          customer._id,
+          "assistant",
+          "[Sent: No rooms available for requested dates]",
+          hotel.timezone,
+        );
 
         return;
       }
 
       // available
-      await sendText(
+      await sendButtons(
         customerPhone,
         `Great news 😊\n\nWe have these rooms available:\n\n${availableRooms.join("\n\n")}\n\nWould you like to continue with booking?`,
+        [
+            { id: "start_new_booking", title: "YES" },
+            { id: "talk_human", title: "👤 Talk to Human" },
+          ],
         phoneNumberId,
         token,
+      );
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Room availability]",
+        hotel.timezone,
       );
 
       return;
@@ -1929,6 +2042,14 @@ _Ref: ${payment?.transactionNote || ""}_`;
           ],
           phoneNumberId,
           token,
+        );
+        await saveMessage(
+          customerPhone,
+          hotel._id,
+          customer._id,
+          "assistant",
+          "[Sent: Payment expired]",
+          hotel.timezone,
         );
 
         return;
@@ -2990,6 +3111,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         hotel,
       );
       await sendText(customerPhone, reply, phoneNumberId, token);
+      await saveMessage(customerPhone, hotel._id, customer._id, "assistant", "[Sent: Ask question]", hotel.timezone);
       return;
     }
 
@@ -3221,6 +3343,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
             phoneNumberId,
             token,
           );
+          await saveMessage(customerPhone, hotel._id, customer._id, "assistant", "[Sent: Connecting to human]", hotel.timezone);
 
           return;
         }
@@ -3235,6 +3358,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
             phoneNumberId,
             token,
           );
+          await saveMessage(customerPhone, hotel._id, customer._id, "assistant", "[Sent: Room photos sent]", hotel.timezone);
           return;
         }
 
@@ -3255,6 +3379,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
               phoneNumberId,
               token,
             );
+            await saveMessage(customerPhone, hotel._id, customer._id, "assistant", `${answer}`, hotel.timezone);
           } else {
             await sendButtons(
               customerPhone,
@@ -3266,6 +3391,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
               phoneNumberId,
               token,
             );
+            await saveMessage(customerPhone, hotel._id, customer._id, "assistant","I'm not able to answer that right now 😊 Would you like to talk with our team directly?", hotel.timezone);
           }
 
           return;
@@ -3942,7 +4068,7 @@ async function handleSmartBooking(
     {
       status: "awaiting_confirmation",
       bookingFlow: { active: false, data: {} },
-      availabilityFlow: {active: false, data: {} }
+      availabilityFlow: { active: false, data: {} },
     },
   );
 

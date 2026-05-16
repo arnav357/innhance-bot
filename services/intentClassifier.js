@@ -156,7 +156,7 @@ Extract if available:
 fields.checkIn
 fields.checkOut
 fields.roomType
-fields.guests
+fields.roomsCount
 If user provides a date range with room availability query:
 Examples:
 24 May to 25 May
