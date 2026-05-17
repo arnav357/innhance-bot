@@ -3197,7 +3197,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       // =====================================================
       // 🚨 NEW: Handle fresh booking attempt (TEXT BASED)
       // =====================================================
-      if (!bookingActive && intent.type === "booking") {
+      if (!bookingActive && !availabilityInquiryActive && intent.type === "booking") {
         const latestBooking = await Booking.findOne({
           phone: { $in: [normalizedPhone, customerPhone] },
           hotelId: hotel._id,
