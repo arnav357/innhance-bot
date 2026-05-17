@@ -1698,11 +1698,12 @@ _Ref: ${payment?.transactionNote || ""}_`;
     });
 
     const bookingActive = freshChat?.bookingFlow?.active;
-    const availabilityActive = freshChat?.availabilityFlow?.active;
-    const availabilityData = freshChat?.availabilityFlow?.data || {};
+    const availabilityInquiryActive = freshChat?.availabilityInquiry?.active;
+    const availabilityData = freshChat?.availabilityInquiry?.data || {};
+    const bookingData = freshChat?.bookingFlow?.data || {};
     const currentMissing =
-      bookingActive && !availabilityActive
-        ? getMissing(freshChat.bookingFlow.data || {}, hotel)
+      bookingActive && !availabilityInquiryActive
+        ? getMissing(bookingData, hotel)
         : null;
     // // If waiting for guests and user typed only number
     // if (bookingActive && /^\d{1,2}$/.test(userMessage.trim())) {
@@ -1719,7 +1720,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
     let availabilityMissing = null;
 
-    if (availabilityActive) {
+    if (availabilityInquiryActive) {
       if (!availabilityData.checkIn) {
         availabilityMissing = "checkIn";
       } else if (!availabilityData.checkOut) {
@@ -1732,7 +1733,11 @@ _Ref: ${payment?.transactionNote || ""}_`;
     let intent;
 
     // ROOMS COUNT deterministic
-    if (bookingActive &&  !availabilityActive && currentMissing === "roomsCount") {
+    if (
+      bookingActive &&
+      !availabilityInquiryActive &&
+      currentMissing === "roomsCount"
+    ) {
       const match = userMessage.trim().match(/^(\d{1,2})(?:\s*room[s]?)?$/i);
 
       if (match) {
@@ -1751,7 +1756,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
     if (
       !intent &&
       bookingActive &&
-      !availabilityActive &&
+      !availabilityInquiryActive &&
       currentMissing === "guests" &&
       currentMissing !== "roomsCount"
     ) {
@@ -1773,7 +1778,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
       }
     }
 
-    if (availabilityActive && availabilityMissing === "checkIn") {
+    if (availabilityInquiryActive && availabilityMissing === "checkIn") {
       const parsed = parseDDMMYYYY(userMessage);
 
       if (!parsed) {
@@ -1796,7 +1801,11 @@ _Ref: ${payment?.transactionNote || ""}_`;
       };
     }
 
-    if (!intent && availabilityActive && availabilityMissing === "checkOut") {
+    if (
+      !intent &&
+      availabilityInquiryActive &&
+      availabilityMissing === "checkOut"
+    ) {
       const parsed = parseDDMMYYYY(userMessage);
 
       if (!parsed) {
@@ -1819,7 +1828,11 @@ _Ref: ${payment?.transactionNote || ""}_`;
       };
     }
 
-    if (!intent && availabilityActive && availabilityMissing === "roomsCount") {
+    if (
+      !intent &&
+      availabilityInquiryActive &&
+      availabilityMissing === "roomsCount"
+    ) {
       const match = userMessage.trim().match(/^(\d{1,2})(?:\s*room[s]?)?$/i);
 
       if (!match) {
@@ -1854,24 +1867,19 @@ _Ref: ${payment?.transactionNote || ""}_`;
         hotelId: hotel._id,
       });
 
-      const currentData = freshChat?.availabilityFlow?.data || {};
+      const currentData = freshChat?.availabilityInquiry?.data || {};
 
-      const mergedData = mergeBooking(currentData, intent.fields || {});
+      const mergedData = {
+        checkIn: intent.fields?.checkIn || currentData.checkIn || null,
 
-      // STRICT FORMAT ENFORCEMENT
-      if (
-        mergedData.checkIn &&
-        !/^\d{2}\/\d{2}\/\d{4}$/.test(mergedData.checkIn)
-      ) {
-        delete mergedData.checkIn;
-      }
+        checkOut: intent.fields?.checkOut || currentData.checkOut || null,
 
-      if (
-        mergedData.checkOut &&
-        !/^\d{2}\/\d{2}\/\d{4}$/.test(mergedData.checkOut)
-      ) {
-        delete mergedData.checkOut;
-      }
+        roomsCount: intent.fields?.roomsCount || currentData.roomsCount || null,
+
+        roomType: intent.fields?.roomType || currentData.roomType || null,
+      };
+
+      
 
       // save flow
       await Chat.findOneAndUpdate(
@@ -1880,13 +1888,9 @@ _Ref: ${payment?.transactionNote || ""}_`;
           hotelId: hotel._id,
         },
         {
-          availabilityFlow: {
+          availabilityInquiry: {
             active: true,
             data: mergedData,
-          },
-          bookingFlow: {
-            active: false,
-            data: {},
           },
 
           status: "availability_in_progress",
@@ -1972,7 +1976,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
         customerPhone,
         `Great news 😊\n\nWe have these rooms available:\n\n${availableRooms.join("\n\n")}\n\nWould you like to continue with booking?`,
         [
-          { id: "start_new_booking", title: "YES" },
+          { id: "availability_continue_booking", title: "YES" },
           { id: "talk_human", title: "👤 Talk to Human" },
         ],
         phoneNumberId,
@@ -2808,6 +2812,53 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       return;
     }
 
+    if (interactiveId === "availability_continue_booking") {
+      const freshChat = await Chat.findOne({
+        phone: customerPhone,
+        hotelId: hotel._id,
+      });
+
+      const inquiry = freshChat?.availabilityInquiry?.data || {};
+
+      // initialize booking flow using inquiry data
+      await Chat.findOneAndUpdate(
+        {
+          phone: customerPhone,
+          hotelId: hotel._id,
+        },
+        {
+          bookingFlow: {
+            active: true,
+            data: {
+              checkIn: inquiry.checkIn,
+              checkOut: inquiry.checkOut,
+              roomsCount: inquiry.roomsCount,
+            },
+          },
+
+          availabilityInquiry: {
+            active: false,
+            data: {},
+          },
+
+          status: "booking_in_progress",
+        },
+      );
+
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Continuing booking from availability inquiry]",
+        hotel.timezone,
+      );
+
+      await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
+
+      return;
+    }
+
     if (interactiveId === "start_new_booking") {
       // await saveMessage(
       //   customerPhone,
@@ -2839,6 +2890,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         { phone: customerPhone, hotelId: hotel._id },
         {
           bookingFlow: { active: false, data: {} },
+          availabilityInquiry: { active: false, data: {} },
           status: "booking_in_progress",
         },
       );
@@ -4125,7 +4177,7 @@ async function handleSmartBooking(
     {
       status: "awaiting_confirmation",
       bookingFlow: { active: false, data: {} },
-      availabilityFlow: { active: false, data: {} },
+      availabilityInquiry: { active: false, data: {} },
     },
   );
 
