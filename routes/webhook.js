@@ -310,14 +310,6 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
     phoneNumberId,
     token,
   );
-  await saveMessage(
-    to,
-    hotel._id,
-    customer._id,
-    "assistant",
-    "📸 Here's a look at our rooms",
-    hotel.timezone,
-  );
 
   if (hotel.rooms?.length) {
     for (const room of hotel.rooms) {
@@ -379,14 +371,6 @@ async function sendRoomPhotos(to, phoneNumberId, token, hotel) {
     ],
     phoneNumberId,
     token,
-  );
-  await saveMessage(
-    to,
-    hotel._id,
-    customer._id,
-    "assistant",
-    "[Sent: Room booking buttons]",
-    hotel.timezone,
   );
 }
 
