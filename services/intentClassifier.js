@@ -1,7 +1,12 @@
 const OpenAI = require("openai");
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-async function classifyIntent(message, currentMissing = null) {
+async function classifyIntent(
+  message,
+  currentMissing = null,
+  currentFlow = "none",
+  availabilityMissing = null
+) {
 
 const prompt = `
 Return ONLY JSON:
@@ -11,6 +16,14 @@ Return ONLY JSON:
  confidence:0.0,
  fields:{}
 }
+
+Current active flow: ${currentFlow}
+
+Current missing availability field:
+${availabilityMissing || "none"}
+
+Current missing booking field:
+${currentMissing || "none"}
 
 Allowed types:
 booking
@@ -27,6 +40,36 @@ command
 room_availability
 
 Current missing booking field: ${currentMissing || "none"}
+
+FLOW PRIORITY RULES:
+
+A. If current active flow = availability_inquiry:
+- Continue the availability inquiry flow.
+- Do NOT switch to booking unless user explicitly says:
+  "book now"
+  "continue booking"
+  "proceed with booking"
+  "booking karna hai"
+  "is din ke liye booking kardo"
+- If missing availability field = roomsCount
+and user sends:
+1
+2
+3
+Then:
+type = room_availability
+fields.roomsCount = number
+- If missing availability field = checkIn
+and user sends date:
+type = room_availability
+fields.checkIn = detected date
+- If missing availability field = checkOut
+and user sends date:
+type = room_availability
+fields.checkOut = detected date
+
+B. If current active flow = booking:
+Continue booking flow unless user clearly changes topic.
 
 Rules:
 

@@ -1841,7 +1841,8 @@ _Ref: ${payment?.transactionNote || ""}_`;
 
     // fallback GPT
     if (!intent) {
-      intent = await classifyIntent(messageForIntent, currentMissing);
+      intent = await classifyIntent(userMessage,currentMissing,availabilityInquiryActive? "availability_inquiry":bookingActive? "booking": "none", availabilityMissing
+      );
       console.log("Intent:", intent);
     }
 
