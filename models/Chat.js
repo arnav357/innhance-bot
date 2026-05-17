@@ -85,7 +85,14 @@ const chatSchema = new mongoose.Schema(
         guests: Number,
       },
     },
-    
+    availabilityInquiry: {
+      active: { type: Boolean, default: false },
+      data: {
+        checkIn: String,
+        checkOut: String,
+        roomsCount: Number,
+      },
+    },
     mode: {
       type: String,
       enum: ["bot", "human"],

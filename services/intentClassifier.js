@@ -182,7 +182,7 @@ type = hotel_question
 room chahiye = booking
 photo bhejo = show_rooms
 
-17. If unsure:
+17. If really unsure,no intent found, no current active flow, or message is gibberish or unrelated to hotel stay:
 type = unknown
 
 18. If user asks availability, vacancy, available rooms, stay availability,
