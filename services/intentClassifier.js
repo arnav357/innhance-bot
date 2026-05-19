@@ -38,6 +38,9 @@ extract ALL detected fields together.
 Possible fields:
 name
 guests
+adultsCount
+childrenCount
+childrenAges
 date
 roomType
 roomsCount
@@ -95,8 +98,28 @@ fields.roomsCount = number
 hum 4 hai
 2 adults
 
+8A. If user says:
+2 adults 1 child
+4 adults 2 kids
+2 adult and 3 children
+family of 5 with 2 kids
+type = booking
+Extract:
+fields.adultsCount
+fields.childrenCount
+If total guests can be determined:
+fields.guests = adults + children
 type = booking
 fields.guests = number
+
+8B. If user sends child ages:
+4, 8
+6 and 12
+kids are 5 and 9
+child age 7
+type = booking
+Extract:
+fields.childrenAges = array of numbers
 
 9. If user sends only a number:
 1
@@ -110,6 +133,12 @@ fields.roomsCount = number
 else current missing booking field = guests:
 type = booking
 fields.guests = number
+fields.adultsCount = number
+fields.childrenCount=0
+
+else if current missing booking field = childrenAges:
+type = booking
+fields.childrenAges = [numbers]
 
 10. If user says yes/haan/ok/continue/proceed:
 type = command

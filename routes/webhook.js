@@ -1012,6 +1012,59 @@ async function checkRoomAvailability({
   };
 }
 
+function validateOccupancy({
+  room,
+  adultsCount,
+  children = [],
+  roomsCount,
+  hotel,
+}) {
+  const maxGuests = room.maximumGuests || 2;
+  const freeStayAgeLimit = hotel.policies?.child?.freeStayAgeLimit ?? 10;
+  const extraBedAvailable = hotel.policies?.extraBed?.available ?? false;
+
+  let effectiveOccupancy = adultsCount || 0;
+  const youngerChildren = [];
+  let olderChildrenCount = 0;
+
+  for (const child of children) {
+    if ((child.age ?? 0) > freeStayAgeLimit) {
+      effectiveOccupancy += 1;
+      olderChildrenCount += 1;
+    } else {
+      youngerChildren.push(child);
+    }
+  }
+
+  const totalCapacity = roomsCount * maxGuests;
+
+  if (effectiveOccupancy <= totalCapacity) {
+    return {
+      valid: true,
+      needsYoungChildDecision: youngerChildren.length > 0,
+      youngerChildren,
+      olderChildrenCount,
+    };
+  }
+
+  const overflow = effectiveOccupancy - totalCapacity;
+
+  if (extraBedAvailable) {
+    return {
+      valid: true,
+      needsExtraBedConfirmation: true,
+      extraBedsNeeded: overflow,
+    };
+  }
+
+  return {
+    valid: false,
+    needsExtraRooms: true,
+    suggestedRooms: Math.ceil(effectiveOccupancy / maxGuests),
+    maxGuests,
+  };
+}
+
 // ============================================================
 // VERIFY WEBHOOK GET
 // ============================================================
@@ -1411,8 +1464,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
       }
 
       const maxGuests = room.maximumGuests || 2;
-      const neededRooms = Math.ceil(data.guests / maxGuests);
-
+      const neededRooms = data.suggestedRooms || 1;
       await Chat.findOneAndUpdate(
         { phone: customerPhone, hotelId: hotel._id },
         {
@@ -1463,6 +1515,55 @@ _Ref: ${payment?.transactionNote || ""}_`;
         hotel,
         customer,
       );
+    }
+
+    if (
+      interactiveId === "young_child_extra" ||
+      interactiveId === "young_child_share"
+    ) {
+      const freshChat = await Chat.findOne({
+        phone: customerPhone,
+        hotelId: hotel._id,
+      });
+      const data = freshChat?.bookingFlow?.data || {};
+
+      if (interactiveId === "young_child_extra") {
+        data.extraBeds = (data.extraBeds || 0) + 1;
+        data.extraBedCharge =
+          (data.extraBedCharge || 0) +
+          (hotel.policies?.child?.extraBedCharge || 0);
+        data.guests = (data.guests || 0) + 1;
+      }
+
+      await Chat.findOneAndUpdate(
+        { phone: customerPhone, hotelId: hotel._id },
+        {
+          "bookingFlow.data": data,
+          "bookingFlow.awaitingYoungChildDecision": false,
+        },
+      );
+
+      return await handleSmartBooking(
+        { type: "booking", fields: {} },
+        "",
+        freshChat,
+        customerPhone,
+        phoneNumberId,
+        token,
+        hotel,
+        customer,
+      );
+    }
+
+    if (interactiveId === "extra_bed_accept") {
+      await sendText(
+        customerPhone,
+        "✅ Extra bed added successfully.",
+        phoneNumberId,
+        token,
+      );
+
+      return;
     }
 
     if (interactiveId === "continue_bot") {
@@ -1725,21 +1826,73 @@ _Ref: ${payment?.transactionNote || ""}_`;
       currentMissing === "guests" &&
       currentMissing !== "roomsCount"
     ) {
-      const match = userMessage
-        .trim()
-        .match(
-          /^(\d{1,2})(?:\s*(guest|guests|adult|adults|people|peoples|log))?$/i,
-        );
+      const adultMatch = userMessage.match(
+        /(\d+)\s*(adult|adults|grownup|grownups|person|persons|people|peoples|log|guest|guests)/i,
+      );
 
-      if (match) {
+      const childMatch = userMessage.match(
+        /(\d+)\s*(child|children|kid|kids|baby|babies|bache|chote bache|choti bache)/i,
+      );
+
+      // CASE 1 → full structured input
+      if (adultMatch || childMatch) {
+        const adultsCount = adultMatch ? parseInt(adultMatch[1]) : 0;
+
+        const childrenCount = childMatch ? parseInt(childMatch[1]) : 0;
+
         intent = {
           type: "booking",
           confidence: 1,
           fields: {
-            guests: parseInt(match[1]),
+            adultsCount,
+            childrenCount,
+            guests: adultsCount + childrenCount,
           },
         };
-        console.log("Intent:", intent);
+      }
+
+      // CASE 2 → only number like "2"
+      else {
+        const single = userMessage.trim().match(/^(\d{1,2})$/);
+
+        if (single) {
+          intent = {
+            type: "booking",
+            confidence: 1,
+            fields: {
+              guests: parseInt(single[1]),
+            },
+          };
+        }
+      }
+    }
+
+    // CHILD AGE PARSER
+    if (bookingActive && currentMissing === "childrenAges") {
+      const nums = userMessage.match(/\d{1,2}/g);
+
+      if (nums?.length === bookingData.childrenCount) {
+        intent = {
+          type: "booking",
+          confidence: 1,
+          fields: {
+            childrenAges: nums.map(Number),
+            children: nums.map((age) => ({
+              age: Number(age),
+              needsExtraBed: false,
+              bedChoice: null,
+            })),
+          },
+        };
+      } else {
+        await sendText(
+          customerPhone,
+          `😊 Please provide exactly ${bookingData.childrenCount} child age(s).\n\nExample:\n• 4, 8\n• 6 and 12`,
+          phoneNumberId,
+          token,
+        );
+
+        return;
       }
     }
 
@@ -2645,7 +2798,6 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       return;
     }
 
-
     if (interactiveId === "start_new_booking") {
       // await saveMessage(
       //   customerPhone,
@@ -2677,7 +2829,6 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         { phone: customerPhone, hotelId: hotel._id },
         {
           bookingFlow: { active: false, data: {} },
-          availabilityInquiry: { active: false, data: {} },
           status: "booking_in_progress",
         },
       );
@@ -3318,6 +3469,14 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         phoneNumberId,
         token,
       );
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "Sorry, I couldn't understand that properly. For better results, you can use buttons to interact with me more easily.\nWould you like to talk with our team?",
+        hotel.timezone,
+      );
       return;
     }
 
@@ -3607,14 +3766,74 @@ async function handleSmartBooking(
   // --------------------
 
   if (Object.keys(fields).length === 0 && currentMissing === "guests") {
-    const guestMatch = msg.match(/\b(\d{1,2,3,4,5,6,7,8,9})\b/);
+    // ------------------------------------------------
+    // CASE 1 → structured input
+    // Example:
+    // 2 adults 1 child
+    // 4 adults 2 kids
+    // ------------------------------------------------
 
-    if (guestMatch) {
-      const num = parseInt(guestMatch[1]);
+    const adultMatch = msg.match(/(\d+)\s*(adult|adults|grownup|grownups)/i);
 
-      if (num >= 1 && num <= 20) {
-        fields.guests = num;
+    const childMatch = msg.match(
+      /(\d+)\s*(child|children|kid|kids|baby|babies)/i,
+    );
+
+    if (adultMatch || childMatch) {
+      const adultsCount = adultMatch ? parseInt(adultMatch[1]) : 0;
+
+      const childrenCount = childMatch ? parseInt(childMatch[1]) : 0;
+
+      const totalGuests = adultsCount + childrenCount;
+
+      fields.guests = totalGuests;
+
+      fields.adultsCount = adultsCount;
+
+      fields.childrenCount = childrenCount;
+    }
+
+    // ------------------------------------------------
+    // CASE 2 → lazy WhatsApp input
+    // Example:
+    // "2"
+    // ------------------------------------------------
+    else {
+      const guestMatch = msg.match(/\b(\d{1,2})\b/);
+
+      if (guestMatch) {
+        const num = parseInt(guestMatch[1]);
+
+        if (num >= 1 && num <= 20) {
+          fields.guests = num;
+
+          // assume all adults
+          fields.adultsCount = num;
+
+          fields.childrenCount = 0;
+        }
       }
+    }
+  }
+
+  if (currentMissing === "childrenAges") {
+    const nums = msg.match(/\d{1,2}/g);
+
+    if (nums?.length === data.childrenCount) {
+      fields.childrenAges = nums.map(Number);
+      fields.children = nums.map((age) => ({
+        age,
+        needsExtraBed: false,
+        bedChoice: null,
+      }));
+    } else {
+      await sendText(
+        customerPhone,
+        `😊 Please provide exactly ${data.childrenCount} child age(s).\n\nExample:\n• 4, 8\n• 6 and 12`,
+        phoneNumberId,
+        token,
+      );
+      return;
     }
   }
 
@@ -3730,7 +3949,13 @@ async function handleSmartBooking(
   if (missing === "guests") {
     await sendText(
       customerPhone,
-      "👥 How many guests? 😊",
+      `👥 How many guests will be staying? 😊
+
+You can reply like:
+• 2
+• 2 adults
+• 2 adults 1 child
+• 4 adults 2 kids`,
       phoneNumberId,
       token,
     );
@@ -3742,6 +3967,32 @@ async function handleSmartBooking(
       "👥 How many guests?",
       hotel.timezone,
     );
+    return;
+  }
+
+  if (missing === "childrenAges") {
+    await sendText(
+      customerPhone,
+
+      `👶 Please share the ages of the children.
+
+Example:
+• 4, 8
+• 6 and 12`,
+
+      phoneNumberId,
+      token,
+    );
+
+    await saveMessage(
+      customerPhone,
+      hotel._id,
+      customer._id,
+      "assistant",
+      "👶 Asked child ages",
+      hotel.timezone,
+    );
+
     return;
   }
 
@@ -3825,26 +4076,95 @@ async function handleSmartBooking(
     (r) => r.name.toLowerCase() === data.roomType.toLowerCase(),
   );
 
-  const maxGuestsPerRoom = room?.maximumGuests || 2;
-  const totalCapacity = maxGuestsPerRoom * data.roomsCount;
+  const occupancyResult = validateOccupancy({
+    room,
+    adultsCount: data.adultsCount || 1,
 
-  if (data.guests > totalCapacity) {
-    const neededRooms = Math.ceil(data.guests / maxGuestsPerRoom);
+    children: data.children || [],
+
+    roomsCount: data.roomsCount || 1,
+
+    hotel,
+  });
+
+  // NEED MORE ROOMS
+  if (occupancyResult.needsExtraRooms) {
+    const neededRooms = occupancyResult.suggestedRooms;
 
     await Chat.findOneAndUpdate(
-      { phone: customerPhone, hotelId: hotel._id },
       {
-        "bookingFlow.data.roomsCount": neededRooms,
+        phone: customerPhone,
+        hotelId: hotel._id,
+      },
+      {
+        "bookingFlow.data.suggestedRooms": neededRooms,
       },
     );
 
     await sendButtons(
       customerPhone,
-      `😊 ${data.roomType} allows up to ${maxGuestsPerRoom} guests per room.\n\nFor ${data.guests} guests, you'll need at least ${neededRooms} rooms.`,
+
+      `Our *${data.roomType}* allows a maximum occupancy of *${occupancyResult.maxGuests} guests per room*.
+
+To comfortably accommodate your group, we recommend updating the booking from *${data.roomsCount} room(s) → ${neededRooms} room(s)* 😊`,
+
       [
-        { id: "rooms_accept", title: `✅ ${neededRooms} Rooms` },
-        { id: "menu_rooms", title: "🔁 Change Room Type" },
+        {
+          id: "rooms_accept",
+          title: "✅ Okay",
+        },
+        {
+          id: "menu_rooms",
+          title: "🔁 Change Room",
+        },
       ],
+
+      phoneNumberId,
+      token,
+    );
+
+    return;
+  }
+
+  // EXTRA BED CONFIRMATION
+  if (occupancyResult.needsExtraBedConfirmation) {
+    const extraBedCost = occupancyResult.extraBedsNeeded * room.extraBedPrice;
+
+    data.extraBeds = occupancyResult.extraBedsNeeded;
+
+    data.extraBedCharge = extraBedCost;
+
+    await Chat.findOneAndUpdate(
+      {
+        phone: customerPhone,
+        hotelId: hotel._id,
+      },
+      {
+        "bookingFlow.data": data,
+      },
+    );
+
+    await sendButtons(
+      customerPhone,
+
+      `🛏️ Your booking requires ${occupancyResult.extraBedsNeeded} extra bed(s).
+
+Additional charge:
+₹${extraBedCost}
+
+These charges will be payable at check-in 😊`,
+
+      [
+        {
+          id: "extra_bed_accept",
+          title: "✅ Continue",
+        },
+        {
+          id: "menu_rooms",
+          title: "🔁 Change Room",
+        },
+      ],
+
       phoneNumberId,
       token,
     );
@@ -3964,7 +4284,6 @@ async function handleSmartBooking(
     {
       status: "awaiting_confirmation",
       bookingFlow: { active: false, data: {} },
-      availabilityInquiry: { active: false, data: {} },
     },
   );
 

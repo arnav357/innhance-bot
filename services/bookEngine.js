@@ -19,7 +19,16 @@ function getMissing(data, hotel) {
   if (!data.checkIn) return "checkIn";
   if (!data.checkOut) return "checkOut";
   if (!data.roomsCount) return "roomsCount";
-  if (!data.guests) return "guests";
+  const totalGuests =
+    data.guests || (data.adultsCount || 0) + (data.childrenCount || 0);
+
+  if (!totalGuests) return "guests";
+  if (
+    data.childrenCount > 0 &&
+    (!data.childrenAges || data.childrenAges.length !== data.childrenCount)
+  ) {
+    return "childrenAges";
+  }
   if (!data.name) return "name";
 
   return null;
