@@ -1032,7 +1032,9 @@ function validateOccupancy({
       effectiveOccupancy += 1;
       olderChildrenCount += 1;
     } else {
-      youngerChildren.push(child);
+      if (!child.bedChoice) {
+  youngerChildren.push(child);
+}
     }
   }
 
@@ -1041,7 +1043,9 @@ function validateOccupancy({
   if (effectiveOccupancy <= totalCapacity) {
     return {
       valid: true,
-      needsYoungChildDecision: youngerChildren.length > 0,
+      needsYoungChildDecision: youngerChildren.some(
+        (child) => !child.bedChoice,
+      ),
       youngerChildren,
       olderChildrenCount,
     };
@@ -1525,32 +1529,133 @@ _Ref: ${payment?.transactionNote || ""}_`;
         phone: customerPhone,
         hotelId: hotel._id,
       });
+
       const data = freshChat?.bookingFlow?.data || {};
 
-      if (interactiveId === "young_child_extra") {
-        data.extraBeds = (data.extraBeds || 0) + 1;
-        data.extraBedCharge =
-          (data.extraBedCharge || 0) +
-          (hotel.policies?.child?.extraBedCharge || 0);
-        data.guests = (data.guests || 0) + 1;
+      const currentChildAge = data.currentChildAge;
+
+      // find current child
+      const child = data.children?.find(
+        (c) => c.age === currentChildAge && !c.bedChoice,
+      );
+
+      if (child) {
+        // ------------------------------------------------
+        // EXTRA BED CHOICE
+        // ------------------------------------------------
+
+        if (interactiveId === "young_child_extra") {
+          child.bedChoice = "extraBed";
+
+          child.needsExtraBed = true;
+
+          data.extraBeds = (data.extraBeds || 0) + 1;
+
+          data.extraBedCharge =
+            (data.extraBedCharge || 0) +
+            (hotel.policies?.child?.extraBedCharge || 0);
+        }
+
+        // ------------------------------------------------
+        // SHARE BED CHOICE
+        // ------------------------------------------------
+        else {
+          child.bedChoice = "share";
+
+          child.needsExtraBed = false;
+        }
       }
 
+      // ------------------------------------------------
+      // CHECK NEXT PENDING CHILD
+      // ------------------------------------------------
+
+      const nextChild = data.children?.find(
+        (c) =>
+          c.age <= (hotel.policies?.child?.freeStayAgeLimit || 10) &&
+          !c.bedChoice,
+      );
+
+      // ------------------------------------------------
+      // ASK NEXT CHILD
+      // ------------------------------------------------
+
+      if (nextChild) {
+        await Chat.findOneAndUpdate(
+          {
+            phone: customerPhone,
+            hotelId: hotel._id,
+          },
+          {
+            "bookingFlow.data": {
+              ...data,
+              currentChildAge: nextChild.age,
+            },
+          },
+        );
+
+        await sendButtons(
+          customerPhone,
+
+          `👶 Would the ${nextChild.age}-year-old child need an extra bed?
+
+🛏️ Extra bed charge:
+₹${hotel.policies?.child?.extraBedCharge || 0}
+
+Or the child can share the existing bed free of cost 😊`,
+
+          [
+            {
+              id: "young_child_share",
+              title: "🛏️ Share Bed",
+            },
+            {
+              id: "young_child_extra",
+              title: "➕ Extra Bed",
+            },
+          ],
+
+          phoneNumberId,
+          token,
+        );
+
+        return;
+      }
+
+      // ------------------------------------------------
+      // CLEANUP
+      // ------------------------------------------------
+
+      delete data.currentChildAge;
+
       await Chat.findOneAndUpdate(
-        { phone: customerPhone, hotelId: hotel._id },
+        {
+          phone: customerPhone,
+          hotelId: hotel._id,
+        },
         {
           "bookingFlow.data": data,
+
           "bookingFlow.awaitingYoungChildDecision": false,
         },
       );
 
+      // continue booking flow
       return await handleSmartBooking(
         { type: "booking", fields: {} },
+
         "",
+
         freshChat,
+
         customerPhone,
+
         phoneNumberId,
+
         token,
+
         hotel,
+
         customer,
       );
     }
@@ -1563,7 +1668,28 @@ _Ref: ${payment?.transactionNote || ""}_`;
         token,
       );
 
-      return;
+      const freshChat = await Chat.findOne({
+        phone: customerPhone,
+        hotelId: hotel._id,
+      });
+
+      return await handleSmartBooking(
+        { type: "booking", fields: {} },
+
+        "",
+
+        freshChat,
+
+        customerPhone,
+
+        phoneNumberId,
+
+        token,
+
+        hotel,
+
+        customer,
+      );
     }
 
     if (interactiveId === "continue_bot") {
@@ -4087,7 +4213,10 @@ Example:
     hotel,
   });
 
+  // --------------------------------------------------
   // NEED MORE ROOMS
+  // --------------------------------------------------
+
   if (occupancyResult.needsExtraRooms) {
     const neededRooms = occupancyResult.suggestedRooms;
 
@@ -4126,9 +4255,61 @@ To comfortably accommodate your group, we recommend updating the booking from *$
     return;
   }
 
+  // --------------------------------------------------
+  // YOUNGER CHILD BED DECISION
+  // --------------------------------------------------
+
+  if (occupancyResult.needsYoungChildDecision) {
+    const child = occupancyResult.youngerChildren[0];
+
+    await Chat.findOneAndUpdate(
+      {
+        phone: customerPhone,
+        hotelId: hotel._id,
+      },
+      {
+        "bookingFlow.awaitingYoungChildDecision": true,
+
+        "bookingFlow.data.currentChildAge": child.age,
+      },
+    );
+
+    await sendButtons(
+      customerPhone,
+
+      `👶 Would the ${child.age}-year-old child need an extra bed?
+
+🛏️ Extra bed charge:
+₹${hotel.policies?.child?.extraBedCharge || 0}
+
+Or the child can share the existing bed free of cost 😊`,
+
+      [
+        {
+          id: "young_child_share",
+          title: "🛏️ Share Bed",
+        },
+        {
+          id: "young_child_extra",
+          title: "➕ Extra Bed",
+        },
+      ],
+
+      phoneNumberId,
+      token,
+    );
+
+    return;
+  }
+
+  // --------------------------------------------------
   // EXTRA BED CONFIRMATION
+  // --------------------------------------------------
+
   if (occupancyResult.needsExtraBedConfirmation) {
-    const extraBedCost = occupancyResult.extraBedsNeeded * room.extraBedPrice;
+    const extraBedCost =
+      occupancyResult.extraBedsNeeded *
+      (hotel.policies?.child?.extraBedCharge || 0);
 
     data.extraBeds = occupancyResult.extraBedsNeeded;
 
@@ -4170,32 +4351,6 @@ These charges will be payable at check-in 😊`,
     );
 
     return;
-  }
-
-  let pricePerNight = room?.price || 2500;
-
-  // If plans exist, use selected plan price
-  if (room?.plans?.length && data.planName) {
-    const selectedPlan = room.plans.find(
-      (p) => p.name.toLowerCase() === data.planName.toLowerCase(),
-    );
-
-    if (selectedPlan?.price) {
-      pricePerNight = selectedPlan.price;
-    }
-  }
-
-  // let pricePerNight = room?.price || 2500;
-
-  // If plans exist, use selected plan price
-  if (room?.plans?.length && data.planName) {
-    const selectedPlan = room.plans.find(
-      (p) => p.name.toLowerCase() === data.planName.toLowerCase(),
-    );
-
-    if (selectedPlan?.price) {
-      pricePerNight = selectedPlan.price;
-    }
   }
 
   const total = pricePerNight * nights * data.roomsCount;
