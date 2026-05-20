@@ -1020,55 +1020,87 @@ function validateOccupancy({
   hotel,
 }) {
   const maxGuests = room.maximumGuests || 2;
-  const freeStayAgeLimit = hotel.policies?.child?.freeStayAgeLimit ?? 10;
-  const extraBedAvailable = hotel.policies?.extraBed?.available ?? false;
+
+  const freeStayAgeLimit =
+    hotel.policies?.child?.freeStayAgeLimit ?? 10;
+
+  const extraBedAvailable =
+    hotel.policies?.extraBed?.available ?? false;
 
   let effectiveOccupancy = adultsCount || 0;
+
   const youngerChildren = [];
+
   let olderChildrenCount = 0;
 
   for (const child of children) {
+
+    // older child counts in occupancy
     if ((child.age ?? 0) > freeStayAgeLimit) {
+
       effectiveOccupancy += 1;
+
       olderChildrenCount += 1;
-    } else {
+    }
+
+    // younger child
+    else {
+
+      // decision pending
       if (!child.bedChoice) {
-  youngerChildren.push(child);
-}
+        youngerChildren.push(child);
+      }
     }
   }
 
-  const totalCapacity = roomsCount * maxGuests;
+  const totalCapacity =
+    roomsCount * maxGuests;
 
+  // occupancy valid
   if (effectiveOccupancy <= totalCapacity) {
+
     return {
       valid: true,
-      needsYoungChildDecision: youngerChildren.some(
-        (child) => !child.bedChoice,
-      ),
+
+       needsYoungChildDecision:
+        youngerChildren.length > 0,
+
       youngerChildren,
+
       olderChildrenCount,
     };
   }
 
-  const overflow = effectiveOccupancy - totalCapacity;
+  // occupancy exceeded
+  const overflow =
+    effectiveOccupancy - totalCapacity;
 
+  // offer extra beds
   if (extraBedAvailable) {
+
     return {
       valid: true,
+
       needsExtraBedConfirmation: true,
+
       extraBedsNeeded: overflow,
     };
   }
 
+  // need more rooms
   return {
+
     valid: false,
+
     needsExtraRooms: true,
-    suggestedRooms: Math.ceil(effectiveOccupancy / maxGuests),
+
+    suggestedRooms: Math.ceil(
+      effectiveOccupancy / maxGuests
+    ),
+
     maxGuests,
   };
 }
-
 // ============================================================
 // VERIFY WEBHOOK GET
 // ============================================================
