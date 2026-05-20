@@ -3967,25 +3967,28 @@ async function handleSmartBooking(
   }
 
   if (currentMissing === "childrenAges") {
-    const nums = msg.match(/\d{1,2}/g);
+  // Override any misclassified GPT fields (e.g. roomsCount) when we're waiting for child ages
+  fields = {};
 
-    if (nums?.length === data.childrenCount) {
-      fields.childrenAges = nums.map(Number);
-      fields.children = nums.map((age) => ({
-        age,
-        needsExtraBed: false,
-        bedChoice: null,
-      }));
-    } else {
-      await sendText(
-        customerPhone,
-        `😊 Please provide exactly ${data.childrenCount} child age(s).\n\nExample:\n• 4, 8\n• 6 and 12`,
-        phoneNumberId,
-        token,
-      );
-      return;
-    }
+  const nums = msg.match(/\d{1,2}/g);
+
+  if (nums?.length === oldData.childrenCount) {   // ← use oldData, not data (declared later)
+    fields.childrenAges = nums.map(Number);
+    fields.children = nums.map((age) => ({
+      age: Number(age),
+      needsExtraBed: false,
+      bedChoice: null,
+    }));
+  } else {
+    await sendText(
+      customerPhone,
+      `😊 Please provide exactly ${oldData.childrenCount} child age(s).\n\nExample:\n• 4, 8\n• 6 and 12`,
+      phoneNumberId,
+      token,
+    );
+    return;
   }
+}
 
   let data = mergeBooking(oldData, fields);
 
