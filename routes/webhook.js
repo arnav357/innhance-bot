@@ -2025,8 +2025,9 @@ Or the child can share the existing bed free of cost 😊`,
       }
     }
 
+    
     // CHILD AGE PARSER
-    if (bookingActive && currentMissing === "childrenAges") {
+    if (bookingActive && currentMissing === "childrenAges" && currentMissing !== "roomsCount" && currentMissing!== "guests") {
       const nums = userMessage.match(/\d{1,2}/g);
 
       if (nums?.length === bookingData.childrenCount) {
