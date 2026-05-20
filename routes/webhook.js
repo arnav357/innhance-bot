@@ -4234,6 +4234,26 @@ Example:
     (r) => r.name.toLowerCase() === data.roomType.toLowerCase(),
   );
 
+  // -----------------------------------
+// PRICE CALCULATION
+// -----------------------------------
+
+let pricePerNight = room?.price || 2500;
+
+// If plans exist, use selected plan price
+if (room?.plans?.length && data.planName) {
+
+  const selectedPlan = room.plans.find(
+    (p) =>
+      p.name.toLowerCase() ===
+      data.planName.toLowerCase(),
+  );
+
+  if (selectedPlan?.price) {
+    pricePerNight = selectedPlan.price;
+  }
+}
+
   const occupancyResult = validateOccupancy({
     room,
     adultsCount: data.adultsCount || 1,
