@@ -1021,11 +1021,9 @@ function validateOccupancy({
 }) {
   const maxGuests = room.maximumGuests || 2;
 
-  const freeStayAgeLimit =
-    hotel.policies?.child?.freeStayAgeLimit ?? 10;
+  const freeStayAgeLimit = hotel.policies?.child?.freeStayAgeLimit ?? 10;
 
-  const extraBedAvailable =
-    hotel.policies?.extraBed?.available ?? false;
+  const extraBedAvailable = hotel.policies?.extraBed?.available ?? false;
 
   let effectiveOccupancy = adultsCount || 0;
 
@@ -1034,10 +1032,8 @@ function validateOccupancy({
   let olderChildrenCount = 0;
 
   for (const child of children) {
-
     // older child counts in occupancy
     if ((child.age ?? 0) > freeStayAgeLimit) {
-
       effectiveOccupancy += 1;
 
       olderChildrenCount += 1;
@@ -1045,7 +1041,6 @@ function validateOccupancy({
 
     // younger child
     else {
-
       // decision pending
       if (!child.bedChoice) {
         youngerChildren.push(child);
@@ -1053,17 +1048,14 @@ function validateOccupancy({
     }
   }
 
-  const totalCapacity =
-    roomsCount * maxGuests;
+  const totalCapacity = roomsCount * maxGuests;
 
   // occupancy valid
   if (effectiveOccupancy <= totalCapacity) {
-
     return {
       valid: true,
 
-       needsYoungChildDecision:
-        youngerChildren.length > 0,
+      needsYoungChildDecision: youngerChildren.length > 0,
 
       youngerChildren,
 
@@ -1072,12 +1064,10 @@ function validateOccupancy({
   }
 
   // occupancy exceeded
-  const overflow =
-    effectiveOccupancy - totalCapacity;
+  const overflow = effectiveOccupancy - totalCapacity;
 
   // offer extra beds
   if (extraBedAvailable) {
-
     return {
       valid: true,
 
@@ -1089,14 +1079,11 @@ function validateOccupancy({
 
   // need more rooms
   return {
-
     valid: false,
 
     needsExtraRooms: true,
 
-    suggestedRooms: Math.ceil(
-      effectiveOccupancy / maxGuests
-    ),
+    suggestedRooms: Math.ceil(effectiveOccupancy / maxGuests),
 
     maxGuests,
   };
@@ -1961,6 +1948,40 @@ Or the child can share the existing bed free of cost 😊`,
 
     let intent;
 
+    // CHILD AGE PARSER
+    if (
+      bookingActive &&
+      currentMissing === "childrenAges" &&
+      currentMissing !== "roomsCount" &&
+      currentMissing !== "guests"
+    ) {
+      const nums = userMessage.match(/\d{1,2}/g);
+
+      if (nums?.length === bookingData.childrenCount) {
+        intent = {
+          type: "booking",
+          confidence: 1,
+          fields: {
+            childrenAges: nums.map(Number),
+            children: nums.map((age) => ({
+              age: Number(age),
+              needsExtraBed: false,
+              bedChoice: null,
+            })),
+          },
+        };
+      } else {
+        await sendText(
+          customerPhone,
+          `😊 Please provide exactly ${bookingData.childrenCount} child age(s).\n\nExample:\n• 4, 8\n• 6 and 12`,
+          phoneNumberId,
+          token,
+        );
+
+        return;
+      }
+    }
+
     // ROOMS COUNT deterministic
     if (bookingActive && currentMissing === "roomsCount") {
       const match = userMessage.trim().match(/^(\d{1,2})(?:\s*room[s]?)?$/i);
@@ -2022,36 +2043,6 @@ Or the child can share the existing bed free of cost 😊`,
             },
           };
         }
-      }
-    }
-
-    
-    // CHILD AGE PARSER
-    if (bookingActive && currentMissing === "childrenAges" && currentMissing !== "roomsCount" && currentMissing!== "guests") {
-      const nums = userMessage.match(/\d{1,2}/g);
-
-      if (nums?.length === bookingData.childrenCount) {
-        intent = {
-          type: "booking",
-          confidence: 1,
-          fields: {
-            childrenAges: nums.map(Number),
-            children: nums.map((age) => ({
-              age: Number(age),
-              needsExtraBed: false,
-              bedChoice: null,
-            })),
-          },
-        };
-      } else {
-        await sendText(
-          customerPhone,
-          `😊 Please provide exactly ${bookingData.childrenCount} child age(s).\n\nExample:\n• 4, 8\n• 6 and 12`,
-          phoneNumberId,
-          token,
-        );
-
-        return;
       }
     }
 
@@ -4236,24 +4227,21 @@ Example:
   );
 
   // -----------------------------------
-// PRICE CALCULATION
-// -----------------------------------
+  // PRICE CALCULATION
+  // -----------------------------------
 
-let pricePerNight = room?.price || 2500;
+  let pricePerNight = room?.price || 2500;
 
-// If plans exist, use selected plan price
-if (room?.plans?.length && data.planName) {
+  // If plans exist, use selected plan price
+  if (room?.plans?.length && data.planName) {
+    const selectedPlan = room.plans.find(
+      (p) => p.name.toLowerCase() === data.planName.toLowerCase(),
+    );
 
-  const selectedPlan = room.plans.find(
-    (p) =>
-      p.name.toLowerCase() ===
-      data.planName.toLowerCase(),
-  );
-
-  if (selectedPlan?.price) {
-    pricePerNight = selectedPlan.price;
+    if (selectedPlan?.price) {
+      pricePerNight = selectedPlan.price;
+    }
   }
-}
 
   const occupancyResult = validateOccupancy({
     room,
