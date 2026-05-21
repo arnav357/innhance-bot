@@ -2206,6 +2206,16 @@ Would you like to continue with booking?`,
           phoneNumberId,
           token,
         );
+        await sendButtons(
+              customerPhone,
+              "Is there any other way I can help you with? 😊",
+              [
+                { id: "talk_human", title: "👤 Talk to Human" },
+                { id: "ask_question", title: "Ask a question" },
+              ],
+              phoneNumberId,
+              token,
+            );
         await saveMessage(
           customerPhone,
           hotel._id,
@@ -2255,6 +2265,26 @@ Would you like to continue with booking?`,
         phoneNumberId,
         token,
       );
+      await sendButtons(
+              customerPhone,
+              "Is there any other way I can help you with? 😊",
+              [
+                { id: "talk_human", title: "👤 Talk to Human" },
+                { id: "ask_question", title: "Ask a question" },
+              ],
+              phoneNumberId,
+              token,
+            );
+      await sendButtons(
+              customerPhone,
+              "I'm not able to answer that right now 😊 Would you like to talk with our team directly?",
+              [
+                { id: "talk_human", title: "👤 Talk to Human" },
+                { id: "menu_book", title: "🛏️ Book Room" },
+              ],
+              phoneNumberId,
+              token,
+            );
       await saveMessage(
         customerPhone,
         hotel._id,
