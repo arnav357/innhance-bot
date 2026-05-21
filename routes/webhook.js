@@ -1033,6 +1033,7 @@ function validateOccupancy({
 
   for (const child of children) {
     // older child counts in occupancy
+    console.log("Inside for loop of validateOccupancy")
     if ((child.age ?? 0) > freeStayAgeLimit) {
       effectiveOccupancy += 1;
 
@@ -3966,7 +3967,11 @@ async function handleSmartBooking(
     }
   }
 
-  if (currentMissing === "childrenAges") {
+
+  if (
+  Object.keys(fields).length === 0 &&
+  currentMissing === "childrenAges"
+) {
   // Override any misclassified GPT fields (e.g. roomsCount) when we're waiting for child ages
   fields = {};
 
@@ -3986,6 +3991,7 @@ async function handleSmartBooking(
       phoneNumberId,
       token,
     );
+    await saveMessage(customerPhone, hotel._id, customer._id, "assistant", "Asked child ages again", hotel.timezone);
     return;
   }
 }
