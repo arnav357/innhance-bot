@@ -4212,6 +4212,8 @@ You can reply like:
     }
   }
 
+  const total = pricePerNight * nights * data.roomsCount;
+
   if (
     !bookingFlow.awaitingBookingConfirmation &&
     !bookingFlow.bookingConfirmed
@@ -4282,7 +4284,6 @@ Additional guests may be accommodated subject to hotel policy and applicable cha
     // EXTRA BED CONFIRMATION
     // --------------------------------------------------
 
-    const total = pricePerNight * nights * data.roomsCount;
 
     const availability = await checkRoomAvailability({
       hotelId: hotel._id,
