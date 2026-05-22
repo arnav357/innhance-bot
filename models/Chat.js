@@ -79,6 +79,7 @@ const chatSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
+      bookingConfirmed: { type: Boolean, default: false },
       data: {
         name: String,
         roomType: String,

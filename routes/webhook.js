@@ -1315,6 +1315,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
           hotelId: hotel._id,
         },
         {
+          "bookingFlow.awaitingBookingConfirmation":false,
           "bookingFlow.bookingConfirmed": true,
         },
         {
