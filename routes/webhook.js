@@ -1309,23 +1309,20 @@ _Ref: ${payment?.transactionNote || ""}_`;
     });
 
     if (interactiveId === "confirm_booking") {
-      await Chat.findOneAndUpdate(
+      const freshChat = await Chat.findOneAndUpdate(
         {
           phone: customerPhone,
           hotelId: hotel._id,
         },
         {
-          "bookingFlow.awaitingBookingConfirmation": false,
           "bookingFlow.bookingConfirmed": true,
+        },
+        {
+          new: true,
         },
       );
 
-      const freshChat = await Chat.findOne({
-        phone: customerPhone,
-        hotelId: hotel._id,
-      });
-
-      return handleSmartBooking(
+      return await handleSmartBooking(
         { type: "booking", fields: {} },
         "",
         freshChat,
@@ -4214,7 +4211,10 @@ You can reply like:
     }
   }
 
-  if (!bookingFlow.awaitingBookingConfirmation) {
+  if (
+    !bookingFlow.awaitingBookingConfirmation &&
+    !bookingFlow.bookingConfirmed
+  ) {
     const occupancyResult = validateOccupancy({
       room,
       adultsCount: data.adultsCount || data.guests || 1,
@@ -4338,7 +4338,7 @@ Additional guests may be accommodated subject to hotel policy and applicable cha
 📅 Check-in: ${data.checkIn}
 📅 Check-out: ${data.checkOut}
 🛏️ Rooms: ${data.roomsCount}
-👥 Guests: ${guestText}
+${guestText}
 🙍 Name: ${data.name}
 
 ${occupancyText}
