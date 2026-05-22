@@ -205,6 +205,57 @@ async function sendButtons(to, bodyText, buttons, phoneNumberId, token) {
   }
 }
 
+async function sendHelloMenu(to, phoneNumberId, token, hotel) {
+  const rows = [
+    {
+      id: "menu_book",
+      title: "🛏️ Book a Room",
+      description: "Reserve your perfect stay",
+    },
+    {
+      id: "menu_rooms",
+      title: "🏨 Rooms & Photos",
+      description: "See all rooms with prices",
+    },
+  ];
+
+  // ✅ Add banquet option only if available
+  if (hotel.banquetHalls?.length) {
+    rows.push({
+      id: "menu_banquet",
+      title: "🎉 Banquet Facilities",
+      description: "Birthday & anniversary events",
+    });
+  }
+
+  // Existing human support option
+  // rows.push({
+  //   id: "talk_human",
+  //   title: "👤 Talk to Human",
+  //   description: "Chat with our team directly",
+  // });
+
+  rows.push({
+    id: "ask_question",
+    title: "🙋 Ask a Question",
+    description: "I will try to answer based on hotel information",
+  });
+
+  await sendList(
+    to,
+    `I'm Inna, your personal assistant. How can I help you again? 😊`,
+    [
+      {
+        title: "What can we help with?",
+        rows,
+      },
+    ],
+    phoneNumberId,
+    token,
+  );
+}
+
+
 async function sendMainMenu(to, phoneNumberId, token, hotel) {
   const rows = [
     {
@@ -2226,16 +2277,6 @@ Would you like to continue with booking?`,
         phoneNumberId,
         token,
       );
-      await sendButtons(
-        customerPhone,
-        "I'm not able to answer that right now 😊 Would you like to talk with our team directly?",
-        [
-          { id: "talk_human", title: "👤 Talk to Human" },
-          { id: "menu_book", title: "🛏️ Book Room" },
-        ],
-        phoneNumberId,
-        token,
-      );
       await saveMessage(
         customerPhone,
         hotel._id,
@@ -2931,51 +2972,56 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     }
 
     if (interactiveId === "start_new_booking") {
+      
+      // await Booking.updateMany(
+      //   {
+      //     phone: { $in: [normalizedPhone, customerPhone] },
+      //     hotelId: hotel._id,
+      //     status: "pending",
+      //   },
+      //   { status: "cancelled" },
+      // );
+
+      // await Payment.updateMany(
+      //   {
+      //     customerPhone,
+      //     hotelId: hotel._id,
+      //     status: "pending",
+      //   },
+      //   { status: "expired" },
+      // );
+
+      // await Chat.findOneAndUpdate(
+      //   { phone: customerPhone, hotelId: hotel._id },
+      //   {
+      //     bookingFlow: { active: false, data: {} },
+      //     status: "booking_in_progress",
+      //   },
+      // );
+
       // await saveMessage(
       //   customerPhone,
       //   hotel._id,
       //   customer._id,
-      //   "user",
-      //   "[Selected: Start new booking]",
-      //   hotel.timezone
+      //   "assistant",
+      //   "[Sent: Resuming booking]",
+      //   hotel.timezone,
       // );
-      await Booking.updateMany(
-        {
-          phone: { $in: [normalizedPhone, customerPhone] },
-          hotelId: hotel._id,
-          status: "pending",
-        },
-        { status: "cancelled" },
-      );
 
-      await Payment.updateMany(
-        {
-          customerPhone,
-          hotelId: hotel._id,
-          status: "pending",
-        },
-        { status: "expired" },
-      );
+      // await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
+      // return;
 
-      await Chat.findOneAndUpdate(
-        { phone: customerPhone, hotelId: hotel._id },
-        {
-          bookingFlow: { active: false, data: {} },
-          status: "booking_in_progress",
-        },
-      );
-
+      await sendHelloMenu(customerPhone, phoneNumberId, token, hotel);
       await saveMessage(
         customerPhone,
         hotel._id,
         customer._id,
         "assistant",
-        "[Sent: Resuming booking]",
+        "[Sent: Hello Menu]",
         hotel.timezone,
       );
-
-      await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
       return;
+      
     }
 
     if (interactiveId === "fresh_booking") {
