@@ -40,7 +40,6 @@ name
 guests
 adultsCount
 childrenCount
-childrenAges
 date
 roomType
 roomsCount
@@ -112,14 +111,6 @@ fields.guests = adults + children
 type = booking
 fields.guests = number
 
-8B. If user sends child ages:
-4, 8
-6 and 12
-kids are 5 and 9
-child age 7
-type = booking
-Extract:
-fields.childrenAges = array of numbers
 
 9. If user sends only a number:
 1
@@ -136,9 +127,6 @@ fields.guests = number
 fields.adultsCount = number
 fields.childrenCount=0
 
-else if current missing booking field = childrenAges:
-type = booking
-fields.childrenAges = [numbers]
 
 10. If user says yes/haan/ok/continue/proceed:
 type = command
