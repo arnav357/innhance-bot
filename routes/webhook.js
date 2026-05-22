@@ -3811,6 +3811,7 @@ async function handleSmartBooking(
   });
 
   let oldData = latestChat?.bookingFlow?.data || {};
+  const bookingFlow = latestChat?.bookingFlow || {};
 
   let fields = { ...intent.fields };
 
