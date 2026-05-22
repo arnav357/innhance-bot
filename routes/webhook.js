@@ -229,11 +229,11 @@ async function sendHelloMenu(to, phoneNumberId, token, hotel) {
   }
 
   // Existing human support option
-  // rows.push({
-  //   id: "talk_human",
-  //   title: "👤 Talk to Human",
-  //   description: "Chat with our team directly",
-  // });
+  rows.push({
+    id: "talk_human",
+    title: "👤 Talk to Human",
+    description: "Chat with our team directly",
+  });
 
   rows.push({
     id: "ask_question",
@@ -2203,7 +2203,7 @@ Would you like to continue with booking?`,
           [
             { id: "pay_qr", title: "💳 Pay Now" },
             { id: "pay_desk", title: "🏨 Pay at Desk" },
-            { id: "start_new_booking", title: "🆕 New Booking" },
+            { id: "start_new_booking", title: "🆕 New Start" },
           ],
           phoneNumberId,
           token,
@@ -2261,7 +2261,7 @@ Would you like to continue with booking?`,
         [
           { id: "pay_qr", title: "💳 Pay Now" },
           { id: "pay_desk", title: "🏨 Pay at Desk" },
-          { id: "start_new_booking", title: "🆕 New Booking" },
+          { id: "start_new_booking", title: "🆕 New Start" },
           // { id: "ask_question", title: "Ask a question" },
         ],
         phoneNumberId,
@@ -2855,7 +2855,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           "😊 You already have an unfinished booking.\n\nWould you like to continue or start a new one?",
           [
             { id: "continue_old_booking", title: "📌 Continue" },
-            { id: "start_new_booking", title: "🆕 Start New" },
+            { id: "start_new_booking", title: "🆕 New Start" },
           ],
           phoneNumberId,
           token,
@@ -2886,7 +2886,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           [
             { id: "pay_qr", title: "💳 Pay Now" },
             { id: "pay_desk", title: "🏨 Pay at Desk" },
-            { id: "start_new_booking", title: "🆕 New Booking" },
+            { id: "start_new_booking", title: "🆕 New Start" },
           ],
           phoneNumberId,
           token,
@@ -3378,7 +3378,7 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
             [
               { id: "pay_qr", title: "💳 Pay Now" },
               { id: "pay_desk", title: "🏨 Pay at Desk" },
-              { id: "start_new_booking", title: "🆕 New Booking" },
+              { id: "start_new_booking", title: "🆕 New Start" },
             ],
             phoneNumberId,
             token,
