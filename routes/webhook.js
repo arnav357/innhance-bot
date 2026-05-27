@@ -23,6 +23,7 @@ const {
   detectInterruption,
   askPendingStep,
   classifyMessage,
+  getLanguageInstruction,
 } = require("../components/webhookFunctions");
 const classifyIntent = require("../services/intentClassifier");
 const { mergeBooking, getMissing } = require("../services/bookEngine");
@@ -847,9 +848,15 @@ async function getSmartReply(
     // await saveMessage(phone, hotelId, customerId, "user", userMessage, hotel.timezone);
     const history = await getHistory(phone, hotelId);
     const language = detectLanguage(userMessage);
+    // 1. Get the language instruction string
+    const languageRule = getLanguageInstruction(language);
 
     const systemMessages = [
-      { role: "system", content: buildSystemPrompt(hotel) },
+
+      // 2. Combine your base hotel prompt with the explicit language rule
+
+
+      { role: "system", content: buildSystemPrompt(hotel) + "\n\n" + languageRule },
       {
         role: "system",
         content:

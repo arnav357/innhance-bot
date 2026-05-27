@@ -214,6 +214,25 @@ function detectLanguage(text = "") {
   return "English";
 }
 
+
+// GET LANGUAGE INSTRUCTION
+
+function getLanguageInstruction(detectedLanguage) {
+  const instructions = {
+    Hindi:    "DETECTED LANGUAGE: Hindi. You MUST reply entirely in Hindi (Devanagari script). Do NOT use English except for proper nouns or numbers.",
+    Hinglish: "DETECTED LANGUAGE: Hinglish. You MUST reply in Hinglish — natural mix of Hindi words and English, written in Roman script (not Devanagari). Match the customer's casual tone exactly.",
+    English:  "DETECTED LANGUAGE: English. Reply in clear, friendly English.",
+  };
+  return instructions[detectedLanguage] || instructions["English"];
+}
+
+
+
+
+
+
+
+
 function looksLikeQuestion(text = "") {
   const t = String(text).trim().toLowerCase();
   return (
@@ -359,7 +378,7 @@ async function askPendingStep(step, customerPhone, phoneNumberId, token) {
 
 
 module.exports = {
-  buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion,detectInterruption,askPendingStep,classifyMessage
+  buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion,detectInterruption,askPendingStep,classifyMessage, getLanguageInstruction
 };
 
 
