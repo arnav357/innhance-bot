@@ -228,6 +228,22 @@ function getLanguageInstruction(detectedLanguage) {
 
 
 
+async function detectLanguageWithGPT(text) {
+  const res = await openai.chat.completions.create({
+    model: "gpt-4o",
+    temperature: 0,
+    max_tokens: 10,
+    messages: [
+      {
+        role: "system",
+        content: `Detect the language of this message. Reply with ONLY one word: Hindi, Hinglish, Tamil, Telugu, Gujarati, Marathi, Bengali, Kannada, Malayalam, Punjabi, Arabic, or English.`
+      },
+      { role: "user", content: text }
+    ]
+  });
+  return res.choices[0].message.content.trim();
+}
+
 
 
 
@@ -378,7 +394,7 @@ async function askPendingStep(step, customerPhone, phoneNumberId, token) {
 
 
 module.exports = {
-  buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion,detectInterruption,askPendingStep,classifyMessage, getLanguageInstruction
+  buildSystemPrompt,normalizePhone,buildUpiLink,buildTransactionNote,detectLanguage,looksLikeQuestion,detectInterruption,askPendingStep,classifyMessage, getLanguageInstruction, detectLanguageWithGPT
 };
 
 

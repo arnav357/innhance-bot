@@ -24,6 +24,7 @@ const {
   askPendingStep,
   classifyMessage,
   getLanguageInstruction,
+  detectLanguageWithGPT,
 } = require("../components/webhookFunctions");
 const classifyIntent = require("../services/intentClassifier");
 const { mergeBooking, getMissing } = require("../services/bookEngine");
@@ -847,7 +848,7 @@ async function getSmartReply(
   try {
     // await saveMessage(phone, hotelId, customerId, "user", userMessage, hotel.timezone);
     const history = await getHistory(phone, hotelId);
-    const language = detectLanguage(userMessage);
+    const language = await detectLanguageWithGPT(userMessage);
     // 1. Get the language instruction string
     const languageRule = getLanguageInstruction(language);
 
