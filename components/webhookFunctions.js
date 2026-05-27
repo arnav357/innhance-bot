@@ -209,7 +209,7 @@ function detectLanguage(text = "") {
     "theek",
     "accha",
   ];
-  if (hinglishWords.filter((w) => lower.includes(w)).length >= 2)
+  if (hinglishWords.filter((w) => lower.includes(w)).length >= 1)
     return "Hinglish";
   return "English";
 }
