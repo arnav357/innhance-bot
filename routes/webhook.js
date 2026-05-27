@@ -4479,6 +4479,12 @@ Please review the details before we proceed with booking 😊`,
     },
   );
 
+  const hotelAddress =
+  hotel.hotel_location?.address || "";
+
+const hotelMapLink =
+  hotel.hotel_location?.google_map_link || "";
+
   const confirmMessage = `🎉 Booking Ready!
 
 👤 ${data.name}
@@ -4488,6 +4494,12 @@ Please review the details before we proceed with booking 😊`,
 🏨 ${data.roomsCount} Rooms
 👥 ${data.guests} Guests
 💰 ₹${total}
+
+📍 Hotel Address:
+${hotelAddress}
+
+🗺️ Google Map:
+${hotelMapLink}
 
 Choose payment method 😊`;
 

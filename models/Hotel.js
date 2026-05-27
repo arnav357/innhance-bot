@@ -17,7 +17,17 @@ const hotelSchema = new mongoose.Schema(
       systemPrompt: { type: String, required: true },
     },
 
-    hotel_location: { type: String },
+    hotel_location: [
+      {
+        google_map_link: {
+          type: String,
+        },
+
+        address: {
+          type: String,
+        },
+      },
+    ],
 
     rooms: [
       {
@@ -72,7 +82,7 @@ const hotelSchema = new mongoose.Schema(
         },
       },
     ],
-    
+
     timezone: {
       type: String,
       default: "Asia/Kolkata",
@@ -124,7 +134,11 @@ const hotelSchema = new mongoose.Schema(
         earlyCheckInCharge: { type: Number, default: 0 },
         lateCheckOutAvailable: { type: Boolean, default: false },
         lateCheckOutCharge: { type: Number, default: 0 },
-        notes: { type: String, default: "Early check-in and late check-out are subject to availability. Extra charge will need to be paid at the desk." },
+        notes: {
+          type: String,
+          default:
+            "Early check-in and late check-out are subject to availability. Extra charge will need to be paid at the desk.",
+        },
       },
     },
 

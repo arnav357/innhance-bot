@@ -146,6 +146,8 @@ EARLY / LATE CHECK:
 LOCATION
 ════════════════════════════════════
 
+Google Map Link: https://maps.app.goo.gl/mDHDByq4Y6SbdAF39
+
 Address:
 Doon University Road, Mothrowala, Dehradun, Uttarakhand 248179
 
