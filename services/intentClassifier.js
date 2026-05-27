@@ -6,6 +6,7 @@ async function classifyIntent(
   currentMissing = null
 ) {
 
+  
 const prompt = `
 Return ONLY JSON:
 
@@ -144,6 +145,10 @@ type = human
 type = banquet
 
 15. If asks hotel facilities:
+location?
+location btao
+hotel kaha hai
+locality?
 parking?
 wifi?
 lift?
