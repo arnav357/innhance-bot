@@ -257,7 +257,6 @@ async function sendHelloMenu(to, phoneNumberId, token, hotel) {
   );
 }
 
-
 async function sendMainMenu(to, phoneNumberId, token, hotel) {
   const rows = [
     {
@@ -853,11 +852,12 @@ async function getSmartReply(
     const languageRule = getLanguageInstruction(language);
 
     const systemMessages = [
-
       // 2. Combine your base hotel prompt with the explicit language rule
 
-
-      { role: "system", content: buildSystemPrompt(hotel) + "\n\n" + languageRule },
+      {
+        role: "system",
+        content: buildSystemPrompt(hotel) + "\n\n" + languageRule,
+      },
       {
         role: "system",
         content:
@@ -1374,7 +1374,7 @@ _Ref: ${payment?.transactionNote || ""}_`;
           hotelId: hotel._id,
         },
         {
-          "bookingFlow.awaitingBookingConfirmation":false,
+          "bookingFlow.awaitingBookingConfirmation": false,
           "bookingFlow.bookingConfirmed": true,
         },
         {
@@ -2980,7 +2980,6 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     }
 
     if (interactiveId === "start_new_booking") {
-      
       // await Booking.updateMany(
       //   {
       //     phone: { $in: [normalizedPhone, customerPhone] },
@@ -3029,7 +3028,6 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
         hotel.timezone,
       );
       return;
-      
     }
 
     if (interactiveId === "fresh_booking") {
@@ -4338,7 +4336,6 @@ Additional guests may be accommodated subject to hotel policy and applicable cha
     // EXTRA BED CONFIRMATION
     // --------------------------------------------------
 
-
     const availability = await checkRoomAvailability({
       hotelId: hotel._id,
       roomType: data.roomType,
@@ -4479,11 +4476,9 @@ Please review the details before we proceed with booking 😊`,
     },
   );
 
-  const hotelAddress =
-  hotel.hotel_location?.address || "";
+  const hotelAddress = hotel.hotel_location?.[0]?.address || "";
 
-const hotelMapLink =
-  hotel.hotel_location?.google_map_link || "";
+  const hotelMapLink = hotel.hotel_location?.[0]?.google_map_link || "";
 
   const confirmMessage = `🎉 Booking Ready!
 
