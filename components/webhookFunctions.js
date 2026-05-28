@@ -219,10 +219,28 @@ function detectLanguage(text = "") {
 
 function getLanguageInstruction(detectedLanguage) {
   const instructions = {
-    Hindi:    "DETECTED LANGUAGE: Hindi. You MUST reply entirely in Hindi (Devanagari script). Do NOT use English except for proper nouns or numbers.",
-    Hinglish: "DETECTED LANGUAGE: Hinglish. You MUST reply in Hinglish — natural mix of Hindi words and English, written in Roman script (not Devanagari). Match the customer's casual tone exactly.",
-    English:  "DETECTED LANGUAGE: English. Reply in clear, friendly English.",
-  };
+  Hindi:     "DETECTED LANGUAGE: Hindi. Reply entirely in Hindi (Devanagari script). Do NOT use English except for proper nouns.",
+  Hinglish:  "DETECTED LANGUAGE: Hinglish. Reply in Hinglish — Hindi+English mix in Roman script. Match casual tone exactly.",
+  English:   "DETECTED LANGUAGE: English. Reply in clear, friendly English.",
+  Tamil:     "DETECTED LANGUAGE: Tamil. Reply entirely in Tamil script.",
+  Tanglish:  "DETECTED LANGUAGE: Tanglish. Reply in Tamil words using Roman script.",
+  Kannada:   "DETECTED LANGUAGE: Kannada. Reply entirely in Kannada script.",
+  Kanglish:  "DETECTED LANGUAGE: Kanglish. Reply in Kannada words using Roman script.",
+  Telugu:    "DETECTED LANGUAGE: Telugu. Reply entirely in Telugu script.",
+  Tenglish:  "DETECTED LANGUAGE: Tenglish. Reply in Telugu words using Roman script.",
+  Gujarati:  "DETECTED LANGUAGE: Gujarati. Reply entirely in Gujarati script.",
+  Gujlish:   "DETECTED LANGUAGE: Gujlish. Reply in Gujarati words using Roman script.",
+  Marathi:   "DETECTED LANGUAGE: Marathi. Reply entirely in Marathi (Devanagari script).",
+  Manglish:  "DETECTED LANGUAGE: Manglish. Reply in Marathi words using Roman script.",
+  Bengali:   "DETECTED LANGUAGE: Bengali. Reply entirely in Bengali script.",
+  Banglish:  "DETECTED LANGUAGE: Banglish. Reply in Bengali words using Roman script.",
+  Malayalam: "DETECTED LANGUAGE: Malayalam. Reply entirely in Malayalam script.",
+  Malglish:  "DETECTED LANGUAGE: Malglish. Reply in Malayalam words using Roman script.",
+  Punjabi:   "DETECTED LANGUAGE: Punjabi. Reply entirely in Punjabi (Gurmukhi script).",
+  Punglish:  "DETECTED LANGUAGE: Punglish. Reply in Punjabi words using Roman script.",
+  Arabic:    "DETECTED LANGUAGE: Arabic. Reply entirely in Arabic script.",
+};
+
   return instructions[detectedLanguage] || instructions["English"];
 }
 
@@ -236,7 +254,22 @@ async function detectLanguageWithGPT(text) {
     messages: [
       {
         role: "system",
-        content: `Detect the language of this message. Reply with ONLY one word: Hindi, Hinglish, Tamil, Telugu, Gujarati, Marathi, Bengali, Kannada, Malayalam, Punjabi, Arabic, or English.`
+        content: `Detect the language of this message. Reply with ONLY one word:
+             Hindi, Hinglish, English, 
+             Tamil, Tanglish,
+             Kannada, Kanglish,
+             Telugu, Tenglish,
+             Gujarati, Gujlish,
+             Marathi, Manglish,
+             Bengali, Banglish,
+             Malayalam, Malglish,
+             Punjabi, Punglish,
+             Arabic.
+
+             Rules:
+            - Native script → use language name (Tamil, Gujarati etc.)
+            - Same language in Roman/English letters → use *lish variant (Tanglish, Gujlish etc.)
+            - Hindi+English Roman mix → Hinglish`
       },
       { role: "user", content: text }
     ]
