@@ -239,6 +239,62 @@ function getLanguageInstruction(detectedLanguage) {
   Punjabi:   "DETECTED LANGUAGE: Punjabi. Reply entirely in Punjabi (Gurmukhi script).",
   Punglish:  "DETECTED LANGUAGE: Punglish. Reply in Punjabi words using Roman script.",
   Arabic:    "DETECTED LANGUAGE: Arabic. Reply entirely in Arabic script.",
+  Odia: "DETECTED LANGUAGE: Odia. Reply entirely in Odia.",
+  Odialish: "DETECTED LANGUAGE: Odialish. Reply in Odia written using English letters.",
+
+  Assamese: "DETECTED LANGUAGE: Assamese. Reply entirely in Assamese.",
+  Assamilish: "DETECTED LANGUAGE: Assamilish. Reply in Assamese written using English letters.",
+
+  Nepali: "DETECTED LANGUAGE: Nepali. Reply entirely in Nepali.",
+  Neplish: "DETECTED LANGUAGE: Neplish. Reply in Nepali written using English letters.",
+
+  Konkani: "DETECTED LANGUAGE: Konkani. Reply entirely in Konkani.",
+  Konglish: "DETECTED LANGUAGE: Konglish. Reply in Konkani written using English letters.",
+
+  Kashmiri: "DETECTED LANGUAGE: Kashmiri. Reply entirely in Kashmiri.",
+  Kashlish: "DETECTED LANGUAGE: Kashlish. Reply in Kashmiri written using English letters.",
+
+  Sindhi: "DETECTED LANGUAGE: Sindhi. Reply entirely in Sindhi.",
+  Sindlish: "DETECTED LANGUAGE: Sindlish. Reply in Sindhi written using English letters.",
+
+  Maithili: "DETECTED LANGUAGE: Maithili. Reply entirely in Maithili.",
+  Maithlish: "DETECTED LANGUAGE: Maithlish. Reply in Maithili written using English letters.",
+
+  Dogri: "DETECTED LANGUAGE: Dogri. Reply entirely in Dogri.",
+  Dogrish: "DETECTED LANGUAGE: Dogrish. Reply in Dogri written using English letters.",
+
+  Bodo: "DETECTED LANGUAGE: Bodo. Reply entirely in Bodo.",
+  Bodolish: "DETECTED LANGUAGE: Bodolish. Reply in Bodo written using English letters.",
+
+  Manipuri: "DETECTED LANGUAGE: Manipuri. Reply entirely in Manipuri.",
+  Manipurlish: "DETECTED LANGUAGE: Manipurlish. Reply in Manipuri written using English letters.",
+
+  Santali: "DETECTED LANGUAGE: Santali. Reply entirely in Santali.",
+  Santalish: "DETECTED LANGUAGE: Santalish. Reply in Santali written using English letters.",
+
+  Urdu: "DETECTED LANGUAGE: Urdu. Reply entirely in Urdu.",
+  Urdlish: "DETECTED LANGUAGE: Urdlish. Reply in Urdu written using English letters.",
+
+  Tulu: "DETECTED LANGUAGE: Tulu. Reply entirely in Tulu.",
+  Tululish: "DETECTED LANGUAGE: Tululish. Reply in Tulu written using English letters.",
+
+  Bhojpuri: "DETECTED LANGUAGE: Bhojpuri. Reply entirely in Bhojpuri.",
+  Bhojpurilish: "DETECTED LANGUAGE: Bhojpurilish. Reply in Bhojpuri written using English letters.",
+
+  Rajasthani: "DETECTED LANGUAGE: Rajasthani. Reply entirely in Rajasthani.",
+  Rajasthanlish: "DETECTED LANGUAGE: Rajasthanlish. Reply in Rajasthani written using English letters.",
+
+  Chhattisgarhi: "DETECTED LANGUAGE: Chhattisgarhi. Reply entirely in Chhattisgarhi.",
+  Chhattisgarhlish: "DETECTED LANGUAGE: Chhattisgarhlish. Reply in Chhattisgarhi written using English letters.",
+
+  Haryanvi: "DETECTED LANGUAGE: Haryanvi. Reply entirely in Haryanvi.",
+  Haryanvlish: "DETECTED LANGUAGE: Haryanvlish. Reply in Haryanvi written using English letters.",
+
+  Garhwali: "DETECTED LANGUAGE: Garhwali. Reply entirely in Garhwali.",
+  Garhwalish: "DETECTED LANGUAGE: Garhwalish. Reply in Garhwali written using English letters.",
+
+  Kumaoni: "DETECTED LANGUAGE: Kumaoni. Reply entirely in Kumaoni.",
+  Kumaonlish: "DETECTED LANGUAGE: Kumaonlish. Reply in Kumaoni written using English letters.",
 };
 
   return instructions[detectedLanguage] || instructions["English"];
@@ -255,16 +311,63 @@ async function detectLanguageWithGPT(text) {
       {
         role: "system",
         content: `Detect the language of this message. Reply with ONLY one word:
-             Hindi, Hinglish, English, 
-             Tamil, Tanglish,
-             Kannada, Kanglish,
-             Telugu, Tenglish,
-             Gujarati, Gujlish,
-             Marathi, Manglish,
-             Bengali, Banglish,
-             Malayalam, Malglish,
-             Punjabi, Punglish,
-             Arabic.
+             Hindi, Hinglish, English,
+
+              Tamil, Tanglish,
+
+              Kannada, Kanglish,
+
+              Telugu, Tenglish,
+
+              Gujarati, Gujlish,
+
+              Marathi, Manglish,
+
+              Bengali, Banglish,
+
+              Malayalam, Malglish,
+
+              Punjabi, Punglish,
+
+              Arabic,
+
+              Odia, Odialish,
+
+              Assamese, Assamilish,
+
+              Nepali, Neplish,
+
+              Konkani, Konglish,
+
+              Kashmiri, Kashlish,
+
+              Sindhi, Sindlish,
+
+              Maithili, Maithlish,
+
+              Dogri, Dogrish,
+
+              Bodo, Bodolish,
+
+              Manipuri, Manipurlish,
+
+              Santali, Santalish,
+
+              Urdu, Urdlish,
+
+              Tulu, Tululish,
+
+              Bhojpuri, Bhojpurilish,
+
+              Rajasthani, Rajasthanlish,
+
+              Chhattisgarhi, Chhattisgarhlish,
+
+              Haryanvi, Haryanvlish,
+
+              Garhwali, Garhwalish,
+
+              Kumaoni, Kumaonlish,
 
              Rules:
             - Native script → use language name (Tamil, Gujarati etc.)
