@@ -372,10 +372,10 @@ function getLanguageInstruction(detectedLanguage) {
   Vietnamese: "DETECTED LANGUAGE: Vietnamese. Reply entirely in Vietnamese.",
   Vinglish: "DETECTED LANGUAGE: Vinglish. Reply in Vietnamese using English alphabets only.",
 };
-};
+
 
   return instructions[detectedLanguage] || instructions["English"];
-
+}
 
 
 
