@@ -367,6 +367,10 @@ function getLanguageInstruction(detectedLanguage) {
   // Korean
   Korean: "DETECTED LANGUAGE: Korean. Reply entirely in Korean Hangul script.",
   Konglish: "DETECTED LANGUAGE: Konglish. Reply in Korean using Romanization. Example: 'Annyeong, bang yeyak hago sipeoyo'.",
+
+  // Vietnamese
+  Vietnamese: "DETECTED LANGUAGE: Vietnamese. Reply entirely in Vietnamese.",
+  Vinglish: "DETECTED LANGUAGE: Vinglish. Reply in Vietnamese using English alphabets only.",
 };
 };
 
@@ -459,7 +463,8 @@ async function detectLanguageWithGPT(text) {
               Indonesian, Indoglish,
               Chinese, Chinglish,
               Japanese, Japlish,
-              Korean, Konglish.
+              Korean, Konglish,
+              Vietnamese, Vinglish
 
              Rules:
               - Native script → use language name (Tamil, Gujarati, Chinese, Japanese etc.)
