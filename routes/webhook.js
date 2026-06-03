@@ -3234,6 +3234,32 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
       return;
     }
 
+    if (interactiveId === "pay_desk") {
+  await sendText(
+    customerPhone,
+
+    `✅ Your booking has been confirmed and you opted to pay at desk.
+
+You can complete the payment at the hotel reception during check-in.
+
+Thank you for choosing ${hotel.name}. We look forward to welcoming you 😊`,
+
+    phoneNumberId,
+    token,
+  );
+
+  await saveMessage(
+    customerPhone,
+    hotel._id,
+    customer._id,
+    "assistant",
+    "[Sent: Pay at desk]",
+    hotel.timezone,
+  );
+
+  return;
+}
+
     if (interactiveId === "pay_qr") {
       const booking = await Booking.findOne({
         phone: { $in: [normalizedPhone, customerPhone] },
