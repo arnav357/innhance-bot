@@ -371,7 +371,7 @@ function getLanguageInstruction(detectedLanguage) {
 };
 
   return instructions[detectedLanguage] || instructions["English"];
-}
+
 
 
 
