@@ -295,6 +295,79 @@ function getLanguageInstruction(detectedLanguage) {
 
   Kumaoni: "DETECTED LANGUAGE: Kumaoni. Reply entirely in Kumaoni.",
   Kumaonlish: "DETECTED LANGUAGE: Kumaonlish. Reply in Kumaoni written using English letters.",
+
+  // French
+  French: "DETECTED LANGUAGE: French. Reply entirely in French script.",
+  Frenglish: "DETECTED LANGUAGE: Frenglish. Reply in French using English keyboard romanization. Example: 'Bonjour, je voudrais reserver une chambre'.",
+
+  // German
+  German: "DETECTED LANGUAGE: German. Reply entirely in German.",
+  Germlish: "DETECTED LANGUAGE: Germlish. Reply in German using English keyboard. Example: 'Hallo, ich mochte ein Zimmer buchen'.",
+
+  // Spanish
+  Spanish: "DETECTED LANGUAGE: Spanish. Reply entirely in Spanish.",
+  Spanglish: "DETECTED LANGUAGE: Spanglish. Reply in Spanish using English keyboard without special characters. Example: 'Hola, quiero reservar una habitacion'.",
+
+  // Italian
+  Italian: "DETECTED LANGUAGE: Italian. Reply entirely in Italian.",
+  Italish: "DETECTED LANGUAGE: Italish. Reply in Italian using English keyboard. Example: 'Ciao, vorrei prenotare una camera'.",
+
+  // Portuguese
+  Portuguese: "DETECTED LANGUAGE: Portuguese. Reply entirely in Portuguese.",
+  Portlish: "DETECTED LANGUAGE: Portlish. Reply in Portuguese using English keyboard without accents. Example: 'Ola, gostaria de reservar um quarto'.",
+
+  // Dutch
+  Dutch: "DETECTED LANGUAGE: Dutch. Reply entirely in Dutch.",
+  Dutchlish: "DETECTED LANGUAGE: Dutchlish. Reply in Dutch using English keyboard. Example: 'Hallo, ik wil een kamer boeken'.",
+
+  // Swedish
+  Swedish: "DETECTED LANGUAGE: Swedish. Reply entirely in Swedish.",
+  Swenglish: "DETECTED LANGUAGE: Swenglish. Reply in Swedish using English keyboard without special characters. Example: 'Hej, jag vill boka ett rum'.",
+
+  // Russian
+  Russian: "DETECTED LANGUAGE: Russian. Reply entirely in Cyrillic Russian script.",
+  Ruslish: "DETECTED LANGUAGE: Ruslish. Reply in Russian using English keyboard romanization (Translit). Example: 'Privet, ya khochu zabronirovat nomer'.",
+
+  // Polish
+  Polish: "DETECTED LANGUAGE: Polish. Reply entirely in Polish.",
+  Polglish: "DETECTED LANGUAGE: Polglish. Reply in Polish using English keyboard without special characters. Example: 'Czesc, chcialbym zarezerwowac pokoj'.",
+
+  // Danish
+  Danish: "DETECTED LANGUAGE: Danish. Reply entirely in Danish.",
+  Danglish: "DETECTED LANGUAGE: Danglish. Reply in Danish using English keyboard. Example: 'Hej, jeg vil gerne booke et varelse'.",
+
+  // Norwegian
+  Norwegian: "DETECTED LANGUAGE: Norwegian. Reply entirely in Norwegian.",
+  Norglish: "DETECTED LANGUAGE: Norglish. Reply in Norwegian using English keyboard. Example: 'Hei, jeg vil gjerne bestille et rom'.",
+
+  // Hebrew
+  Hebrew: "DETECTED LANGUAGE: Hebrew. Reply entirely in Hebrew script.",
+  Heblish: "DETECTED LANGUAGE: Heblish. Reply in Hebrew using English keyboard romanization. Example: 'Shalom, ani rotze lehazmin cheder'.",
+
+  // Thai
+  Thai: "DETECTED LANGUAGE: Thai. Reply entirely in Thai script.",
+  Thaiglish: "DETECTED LANGUAGE: Thaiglish. Reply in Thai using English keyboard romanization. Example: 'Sawadee, phom yak ja jong hong'.",
+
+  // Malay
+  Malay: "DETECTED LANGUAGE: Malay. Reply entirely in Malay.",
+  Maylish: "DETECTED LANGUAGE: Maylish. Reply in Malay using English keyboard. Example: 'Helo, saya ingin menempah bilik'.",
+
+  // Indonesian
+  Indonesian: "DETECTED LANGUAGE: Indonesian. Reply entirely in Indonesian.",
+  Indoglish: "DETECTED LANGUAGE: Indoglish. Reply in Indonesian using English keyboard. Example: 'Halo, saya ingin memesan kamar'.",
+
+  // Chinese
+  Chinese: "DETECTED LANGUAGE: Chinese. Reply entirely in Simplified Chinese characters (汉字).",
+  Chinglish: "DETECTED LANGUAGE: Chinglish. Reply in Chinese using Pinyin romanization. Example: 'Ni hao, wo yao ding fangjian'.",
+
+  // Japanese
+  Japanese: "DETECTED LANGUAGE: Japanese. Reply entirely in Japanese Hiragana/Katakana/Kanji.",
+  Japlish: "DETECTED LANGUAGE: Japlish. Reply in Japanese using Romaji. Example: 'Konnichiwa, heya wo yoyaku shitai desu'.",
+
+  // Korean
+  Korean: "DETECTED LANGUAGE: Korean. Reply entirely in Korean Hangul script.",
+  Konglish: "DETECTED LANGUAGE: Konglish. Reply in Korean using Romanization. Example: 'Annyeong, bang yeyak hago sipeoyo'.",
+};
 };
 
   return instructions[detectedLanguage] || instructions["English"];
@@ -369,10 +442,37 @@ async function detectLanguageWithGPT(text) {
 
               Kumaoni, Kumaonlish,
 
+              French, Frenglish,
+              German, Germlish,
+              Spanish, Spanglish,
+              Italian, Italish,
+              Portuguese, Portlish,
+              Dutch, Dutchlish,
+              Swedish, Swenglish,
+              Russian, Ruslish,
+              Polish, Polglish,
+              Danish, Danglish,
+              Norwegian, Norglish,
+              Hebrew, Heblish,
+              Thai, Thaiglish,
+              Malay, Maylish,
+              Indonesian, Indoglish,
+              Chinese, Chinglish,
+              Japanese, Japlish,
+              Korean, Konglish.
+
              Rules:
-            - Native script → use language name (Tamil, Gujarati etc.)
-            - Same language in Roman/English letters → use *lish variant (Tanglish, Gujlish etc.)
-            - Hindi+English Roman mix → Hinglish`
+              - Native script → use language name (Tamil, Gujarati, Chinese, Japanese etc.)
+              - Same language in Roman/English letters → use *lish variant (Tanglish, Chinglish etc.)
+              - Hindi+English Roman mix → Hinglish
+              - French without accents (e instead of é) → Frenglish
+              - Russian in Cyrillic → Russian, romanized (privet) → Ruslish
+              - Arabic in Arabic script → Arabic, romanized (marhaba) → Arablish
+              - Chinese in characters (你好) → Chinese, in Pinyin (ni hao) → Chinglish
+              - Japanese in Hiragana/Kanji → Japanese, in Romaji (konnichiwa) → Japlish
+              - Korean in Hangul (안녕) → Korean, romanized (annyeong) → Konglish
+              - Thai in Thai script → Thai, romanized (sawadee) → Thaiglish
+              - Hebrew in Hebrew script → Hebrew, romanized (shalom) → Heblish`
       },
       { role: "user", content: text }
     ]
