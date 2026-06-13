@@ -9,6 +9,8 @@ const hotelSchema = new mongoose.Schema(
     whatsappNumber: { type: String },
     whatsappPhoneNumberId: { type: String, unique: true },
     contactNumber: [{ type: String }],
+    website: { type: String },
+    instagram: { type: String },
     whatsappToken: { type: String }, // ← per-hotel permanent token
     shortCode: { type: String }, // ← e.g. "14G" for payment refs
 
@@ -101,9 +103,10 @@ const hotelSchema = new mongoose.Schema(
 
     policies: {
       cancellation: {
-        freeCancellationWindowHours: { type: Number, default: 48 },
+        freeCancellationWindowHours: { type: String, default: "1 day" },
         penaltyWithinWindow: { type: String, default: "50%" },
         noShowRefund: { type: Boolean, default: false },
+          note: { type: String, default: "" },
       },
       pet: {
         allowed: { type: Boolean, default: false },

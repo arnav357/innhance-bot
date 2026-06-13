@@ -22,9 +22,7 @@ async function getHotel() {
 router.get("/all", verifyToken, async (req, res) => {
   try {
     const hotel = await Hotel.findById(req.user.hotelId);
-    res.json({ rooms: hotel.rooms,
-      banquetHalls: hotel.banquetHalls || []
-     });
+    res.json({ rooms: hotel.rooms, banquetHalls: hotel.banquetHalls || [] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -119,12 +117,17 @@ router.post("/add", verifyToken, async (req, res) => {
 // PUT: Edit an existing room (Also handles toggling the 'Booked/Available' grid)
 router.put("/:roomId", verifyToken, async (req, res) => {
   try {
+    console.log("PUT CALLED");
+    console.log("roomId:", req.params.roomId);
+    console.log("body:", req.body);
     const hotel = await Hotel.findById(req.user.hotelId);
+    console.log("hotel found:", !!hotel);
 
     // Find the specific room inside the array using the passed ID
     const roomIndex = hotel.rooms.findIndex(
       (r) => r._id.toString() === req.params.roomId,
     );
+    console.log("roomIndex:", roomIndex);
 
     if (roomIndex === -1) {
       return res.status(404).json({ error: "Room not found in database" });
@@ -167,11 +170,20 @@ router.put("/:roomId", verifyToken, async (req, res) => {
       });
     }
 
+    console.log("Before save");
+    console.log(JSON.stringify(room, null, 2));
+
     await hotel.save();
 
     res.status(200).json({ message: "Room updated successfully" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("ERROR:");
+    console.error(err);
+    console.error(err.stack);
+
+    res.status(500).json({
+      error: err.message,
+    });
   }
 });
 
@@ -242,7 +254,5 @@ router.post(
     }
   },
 );
-
-
 
 module.exports = router;
