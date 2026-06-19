@@ -52,12 +52,8 @@ const {
   saveMessage,
   getHistory,
   isFirstMessage,
-}= require("../services/chatService");
-const {
-  parseDate,
-  parseDDMMYYYY,
-}= require("../services/dateUtils");
-
+} = require("../services/chatService");
+const { parseDate, parseDDMMYYYY } = require("../services/dateUtils");
 
 // ============================================================
 // PLATFORM PAYMENT CONFIG
@@ -76,8 +72,6 @@ const FALLBACK_IMAGES = {
   deluxe: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800",
   suite: "https://images.unsplash.com/photo-1631049552057-403cdb8f0658?w=800",
 };
-
-
 
 // ============================================================
 // CORE AI FUNCTION
@@ -2108,6 +2102,10 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
           bookingId: latestBooking._id,
         }).sort({ createdAt: -1 });
       }
+      const currentChat = await Chat.findOne({
+        phone: customerPhone,
+        hotelId: hotel._id,
+      });
 
       // =====================================================
       // ✅ SCENARIO B1 → booking incomplete
@@ -2272,6 +2270,38 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
 
       // await sendRoomMenu(customerPhone, phoneNumberId, token, hotel);
       // return;
+      const latestBooking = await Booking.findOne({
+        phone: { $in: [normalizedPhone, customerPhone] },
+        hotelId: hotel._id,
+        status: "confirmed",
+      }).sort({ createdAt: -1 });
+
+      if (latestBooking) {
+        await Payment.findOneAndUpdate(
+          {
+            bookingId: latestBooking._id,
+            status: { $in: ["pending", "failed"] },
+          },
+          {
+            status: "expired",
+          },
+        );
+      }
+
+      await Chat.findOneAndUpdate(
+        {
+          phone: customerPhone,
+          hotelId: hotel._id,
+        },
+        {
+          "bookingFlow.active": false,
+          "bookingFlow.awaitingBookingConfirmation": false,
+          "bookingFlow.bookingConfirmed": false,
+          "bookingFlow.data": {},
+          status: "inquiry",
+          mode: "bot",
+        },
+      );
 
       await sendHelloMenu(customerPhone, phoneNumberId, token, hotel);
       await saveMessage(
@@ -2481,30 +2511,30 @@ _Booking ID: #${booking._id.toString().slice(-6).toUpperCase()}_`;
     }
 
     if (interactiveId === "pay_desk") {
-  await sendText(
-    customerPhone,
+      await sendText(
+        customerPhone,
 
-    `✅ Your booking has been confirmed and you opted to pay at desk.
+        `✅ Your booking has been confirmed and you opted to pay at desk.
 
 You can complete the payment at the hotel reception during check-in.
 
 Thank you for choosing ${hotel.name}. We look forward to welcoming you 😊`,
 
-    phoneNumberId,
-    token,
-  );
+        phoneNumberId,
+        token,
+      );
 
-  await saveMessage(
-    customerPhone,
-    hotel._id,
-    customer._id,
-    "assistant",
-    "[Sent: Pay at desk]",
-    hotel.timezone,
-  );
+      await saveMessage(
+        customerPhone,
+        hotel._id,
+        customer._id,
+        "assistant",
+        "[Sent: Pay at desk]",
+        hotel.timezone,
+      );
 
-  return;
-}
+      return;
+    }
 
     if (interactiveId === "pay_qr") {
       const booking = await Booking.findOne({
@@ -3318,13 +3348,13 @@ async function handleSmartBooking(
   let data = mergeBooking(oldData, fields);
 
   await Chat.findOneAndUpdate(
-  { phone: customerPhone, hotelId: hotel._id },
-  {
-    "bookingFlow.active": true,
-    "bookingFlow.data": data,
-    status: "booking_in_progress",
-  },
-);
+    { phone: customerPhone, hotelId: hotel._id },
+    {
+      "bookingFlow.active": true,
+      "bookingFlow.data": data,
+      status: "booking_in_progress",
+    },
+  );
 
   const missing = getMissing(data, hotel);
 
@@ -3705,39 +3735,39 @@ Please review the details before we proceed with booking 😊`,
   }
 
   if (
-  bookingFlow.awaitingBookingConfirmation &&
-  !bookingFlow.bookingConfirmed
-) {
-  await sendButtons(
-    customerPhone,
+    bookingFlow.awaitingBookingConfirmation &&
+    !bookingFlow.bookingConfirmed
+  ) {
+    await sendButtons(
+      customerPhone,
 
-    `👋 Hello!
+      `👋 Hello!
 
 You previously provided details for a booking but haven't confirmed it yet 😊
 
 Would you like to continue with that booking or do something else?`,
 
-    [
-      {
-        id: "confirm_booking",
-        title: "✅ Confirm",
-      },
-      {
-        id: "ask_question",
-        title: "❓ Ask Question",
-      },
-      {
-        id: "start_new_booking",
-        title: "🆕 New Booking",
-      },
-    ],
+      [
+        {
+          id: "confirm_booking",
+          title: "✅ Confirm",
+        },
+        {
+          id: "ask_question",
+          title: "❓ Ask Question",
+        },
+        {
+          id: "start_new_booking",
+          title: "🆕 New Booking",
+        },
+      ],
 
-    phoneNumberId,
-    token,
-  );
+      phoneNumberId,
+      token,
+    );
 
-  return;
-}
+    return;
+  }
 
   if (!bookingFlow.bookingConfirmed) {
     console.log("BLOCKED - Booking not confirmed");
