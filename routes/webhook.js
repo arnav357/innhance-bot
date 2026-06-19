@@ -297,6 +297,16 @@ async function checkRoomAvailability({
     checkIn: { $lt: checkOut },
     checkOut: { $gt: checkIn },
   });
+  console.log("CHECKING ROOM TYPE:", roomType);
+  console.log(
+    overlappingBookings.map((b) => ({
+      roomType: b.roomType,
+      checkIn: b.checkIn,
+      checkOut: b.checkOut,
+    })),
+  );
+
+  console.log("OVERLAPPING:", overlappingBookings);
 
   const alreadyBooked = overlappingBookings.reduce(
     (sum, booking) => sum + (booking.numberOfRooms || 1),
