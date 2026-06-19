@@ -289,14 +289,21 @@ async function checkRoomAvailability({
       remainingRooms: 0,
     };
   }
+  const bookings = await Booking.find({
+  hotelId,
+  roomType: new RegExp(`^${roomType}$`, "i"),
+  status: "confirmed",
+});
 
-  const overlappingBookings = await Booking.find({
-    hotelId,
-    roomType: new RegExp(`^${roomType}$`, "i"),
-    status: "confirmed",
-    checkIn: { $lt: checkOut },
-    checkOut: { $gt: checkIn },
-  });
+  const overlappingBookings = bookings.filter((booking) => {
+  const bookingCheckIn = new Date(booking.checkIn);
+  const bookingCheckOut = new Date(booking.checkOut);
+
+  return (
+    bookingCheckIn < checkOut &&
+    bookingCheckOut > checkIn
+  );
+});
   console.log("CHECKING ROOM TYPE:", roomType);
   console.log(
     overlappingBookings.map((b) => ({
