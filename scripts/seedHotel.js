@@ -333,16 +333,17 @@ async function seed() {
     // await Hotel.deleteOne({ email: 'admin@innhance.com' });
 
     const hotel = await Hotel.create({
-      name: "HOTEL ND Manor",
-      email: "hotelndmanor@gmail.com",
-      password: "ashirwad10$",
+      name: "Hotel Kotra Haveli",
+      email: "reservation@kotrahaveli.com",
+      password: "Rudra@1947",
 
-      managerName: "Indresh Goel",
+      managerName: "Hotel Kotra Haveli",
 
-      whatsappNumber: "+919837233055",
+      whatsappNumber: "+919929777887",
       whatsappPhoneNumberId: "997060770167829",
 
-      contactNumber: ["+917417774451", "+917078944451"],
+      contactNumber: ["+919929777887"],
+      website: "https://kotrahaveli.com/",
 
       // short reference code for bookings/payments
       shortCode: "NDM",
@@ -352,147 +353,43 @@ async function seed() {
         systemPrompt: systemPrompt,
       },
 
-      hotel_location: "Doon University Road, Mothrowala, Dehradun Uttarakhand 248179",
+      hotel_location: "12, Surya Marg, Opposite. Jagdish Temple, Udaipur, Rajasthan 313001 INDIA",
 
       rooms: [
         {
-          name: "Deluxe",
-          plans: [
-            {
-              name: "EP",
-              price: 2000,
-              description: "Room only",
-            },
-            {
-              name: "CP",
-              price: 2500,
-              description: "Room with breakfast",
-            },
-            {
-              name: "MAP",
-              price: 3000,
-              description: "Breakfast and dinner included",
-            },
-          ],
+          name: "Deluxe AC",
+          price: 2000,
+          // plans: [
+          //   {
+          //     name: "EP",
+          //     price: 2000,
+          //     description: "Room only",
+          //   },
+          //   {
+          //     name: "CP",
+          //     price: 2500,
+          //     description: "Room with breakfast",
+          //   },
+          //   {
+          //     name: "MAP",
+          //     price: 3000,
+          //     description: "Breakfast and dinner included",
+          //   },
+          // ],
 
-          totalRooms: 6,
-          availableRooms: 6,
-
-          maximumGuests: 2,
-
-          description:
-            "Deluxe Rooms are the non view room with all modern facilities.",
-
-          amenities: [
-            "Extra Bedding Available with extra charge",
-            "EP plan includes room only , CP plan includes room with breakfast and MAP plan includes room with breakfast and dinner",
-            "24 hours hot and cold water",
-            "Room service"
-          ],
-
-          images: [
-            "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800",
-          ],
-
-          roomNumbers: [
-            { num: "102" },
-            { num: "103" },
-            { num: "104" },
-            { num: "105" },
-            { num: "202" },
-            { num: "203" },
-            
-            
-          ],
-        },
-
-        {
-          name: "Super Deluxe",
-
-          plans: [
-            {
-              name: "EP",
-              price: 2500,
-              description: "Room only",
-            },
-            {
-              name: "CP",
-              price: 3000,
-              description: "Room with breakfast",
-            },
-            {
-              name: "MAP",
-              price: 3500,
-              description: "Breakfast and dinner included",
-            }
-          ],
-
-          totalRooms: 8,
-          availableRooms: 8,
-
-          maximumGuests: 2,
-
-          description:
-            "Super Deluxe Rooms are spacious rooms with View and Balcony",
-
-          amenities: [
-            "Extra Bedding Available with extra charge",
-            "EP plan includes room only , CP plan includes room with breakfast and MAP plan includes room with breakfast and dinner",
-            "24 hours hot and cold water",
-            "Room service"
-          ],
-
-          images: [
-            "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800",
-          ],
-
-          roomNumbers: [
-            { num: "101" },
-            { num: "201" },
-            { num: "301" },
-            { num: "302" },
-            { num: "305" },
-            { num: "210" },
-            { num: "211" },
-            { num: "212" },
-          ],
-        },
-
-        {
-          name: "Family",
-          plans: [
-            {
-              name: "EP",
-              price: 3500,
-              description: "Room only",
-            },
-            {
-              name: "CP",
-              price: 4000,
-              description: "Room with breakfast",
-            },
-            {
-              name: "MAP",
-              price: 5500,
-              description: "Breakfast and dinner included",
-            },
-          ],
-
-          totalRooms: 2,
-          availableRooms: 2,
+          totalRooms: 22,
+          availableRooms: 22,
 
           maximumGuests: 4,
 
           description:
-            "Family Rooms comes with 2 double beds and view.It has all the amenities available",
+            "Stay in the heart of Udaipur at Kotra Haveli. Enjoy heritage-style accommodation, friendly service, rooftop dining, and prime location.",
 
           amenities: [
-            "1 double bed and 1 sofa-cum-bed",
             "Extra Bedding Available with extra charge",
             "EP plan includes room only , CP plan includes room with breakfast and MAP plan includes room with breakfast and dinner",
             "24 hours hot and cold water",
-            "Room service",
-            "All amenities available"
+            "Room service"
           ],
 
           images: [
@@ -500,51 +397,170 @@ async function seed() {
           ],
 
           roomNumbers: [
-            { num: "302" },
-            { num: "303" }
+            { num: "11" },
+            { num: "12" },
+            { num: "14" },
+            { num: "15" },
+            { num: "101" },
+            { num: "102" },
+            { num: "103" },
+            { num: "104" },
+            { num: "105" },
+            { num: "106" },
+            { num: "107" },
+            { num: "108" },
+            { num: "109" },
+            { num: "201" },
+            { num: "202" },
+            { num: "203" },
+            { num: "204" },
+            { num: "205" },
+            { num: "206" },
+            { num: "207" },
+            { num: "208" },
+            { num: "209" },
+          ],
+        },
+
+      //   {
+      //     name: "Super Deluxe",
+
+      //     plans: [
+      //       {
+      //         name: "EP",
+      //         price: 2500,
+      //         description: "Room only",
+      //       },
+      //       {
+      //         name: "CP",
+      //         price: 3000,
+      //         description: "Room with breakfast",
+      //       },
+      //       {
+      //         name: "MAP",
+      //         price: 3500,
+      //         description: "Breakfast and dinner included",
+      //       }
+      //     ],
+
+      //     totalRooms: 8,
+      //     availableRooms: 8,
+
+      //     maximumGuests: 2,
+
+      //     description:
+      //       "Super Deluxe Rooms are spacious rooms with View and Balcony",
+
+      //     amenities: [
+      //       "Extra Bedding Available with extra charge",
+      //       "EP plan includes room only , CP plan includes room with breakfast and MAP plan includes room with breakfast and dinner",
+      //       "24 hours hot and cold water",
+      //       "Room service"
+      //     ],
+
+      //     images: [
+      //       "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800",
+      //     ],
+
+      //     roomNumbers: [
+      //       { num: "101" },
+      //       { num: "201" },
+      //       { num: "301" },
+      //       { num: "302" },
+      //       { num: "305" },
+      //       { num: "210" },
+      //       { num: "211" },
+      //       { num: "212" },
+      //     ],
+      //   },
+
+      //   {
+      //     name: "Family",
+      //     plans: [
+      //       {
+      //         name: "EP",
+      //         price: 3500,
+      //         description: "Room only",
+      //       },
+      //       {
+      //         name: "CP",
+      //         price: 4000,
+      //         description: "Room with breakfast",
+      //       },
+      //       {
+      //         name: "MAP",
+      //         price: 5500,
+      //         description: "Breakfast and dinner included",
+      //       },
+      //     ],
+
+      //     totalRooms: 2,
+      //     availableRooms: 2,
+
+      //     maximumGuests: 4,
+
+      //     description:
+      //       "Family Rooms comes with 2 double beds and view.It has all the amenities available",
+
+      //     amenities: [
+      //       "1 double bed and 1 sofa-cum-bed",
+      //       "Extra Bedding Available with extra charge",
+      //       "EP plan includes room only , CP plan includes room with breakfast and MAP plan includes room with breakfast and dinner",
+      //       "24 hours hot and cold water",
+      //       "Room service",
+      //       "All amenities available"
+      //     ],
+
+      //     images: [
+      //       "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800",
+      //     ],
+
+      //     roomNumbers: [
+      //       { num: "302" },
+      //       { num: "303" }
             
-          ],
-        },
+      //     ],
+      //   },
+      // ],
+
+      // banquetHalls: [
+      //   {
+      //     name: "Royal Banquet Hall",
+
+      //     capacity: 300,
+
+      //     // pricePerDay: 80000,
+
+      //     // pricePerHour: 12000,
+
+      //     available: true,
+
+      //     description:
+      //       "Large banquet hall suitable for weddings,engagement and corporate events.",
+
+      //     amenities: [
+      //       "Indoor Air Conditioning",
+      //       "In house food service",
+      //       "DJ Setup",
+      //       "Decoration Support",
+      //       "Dining Area"
+      //     ],
+
+      //     images: [
+      //       "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800",
+      //     ],
+
+      //     eventTypes: ["Wedding", "Birthday", "Corporate", "Engagement"],
+
+      //     // timings: {
+      //     //   start: "09:00 AM",
+      //     //   end: "11:00 PM",
+      //     // },
+      //   },
       ],
 
-      banquetHalls: [
-        {
-          name: "Royal Banquet Hall",
-
-          capacity: 300,
-
-          // pricePerDay: 80000,
-
-          // pricePerHour: 12000,
-
-          available: true,
-
-          description:
-            "Large banquet hall suitable for weddings,engagement and corporate events.",
-
-          amenities: [
-            "Indoor Air Conditioning",
-            "In house food service",
-            "DJ Setup",
-            "Decoration Support",
-            "Dining Area"
-          ],
-
-          images: [
-            "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800",
-          ],
-
-          eventTypes: ["Wedding", "Birthday", "Corporate", "Engagement"],
-
-          // timings: {
-          //   start: "09:00 AM",
-          //   end: "11:00 PM",
-          // },
-        },
-      ],
-
-      upiId: "paytm.s15ns9s@pty",
-      upiName: "HOTEL ND MANOR",
+      upiId: "9460253798@okbizaxis",
+      upiName: "Hotel Kotra Haveli",
 
       images: {
         lobby:
@@ -560,7 +576,7 @@ async function seed() {
           "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800",
       },
 
-      restaurant: "no",
+      restaurant: "yes both available (open and AC)",
 
       policies: {
         cancellation: {
