@@ -26,9 +26,8 @@ const {
   getLanguageInstruction,
   detectLanguageWithGPT,
 } = require("../components/webhookFunctions");
-
-const classifyIntent = require("../services/intentClassifier");
-// const classifyIntent = require("../services/newIntentClassifier")
+// const classifyIntent = require("../services/intentClassifier");
+const classifyIntent = require("../services/newIntentClassifier")
 const { mergeBooking, getMissing } = require("../services/bookEngine");
 const answerHotelQuestion = require("../services/hotelKnowledge");
 const {
@@ -1318,14 +1317,14 @@ Or the child can share the existing bed free of cost 😊`,
 
     // fallback GPT
     if (!intent) {
-      intent = await classifyIntent(userMessage, currentMissing);
-      // intent = await classifyIntent({
-      //   venueId: hotel._id.toString(),
-      //   message: userMessage,
-      //   history: [],
-      //   language: "en",
-      //   currentMissing,
-      // });
+      // intent = await classifyIntent(userMessage, currentMissing);
+      intent = await classifyIntent({
+        venueId: hotel._id.toString(),
+        message: userMessage,
+        history: [],
+        language: "en",
+        currentMissing,
+      });
       console.log("Intent:", intent);
     }
 
