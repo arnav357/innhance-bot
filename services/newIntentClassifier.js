@@ -38,6 +38,8 @@ async function classifyIntent({
     console.error(
       "[AI SERVICE] Python service unavailable. Falling back to V1 classifier."
     );
+    console.error(error.response?.data);
+    console.error(error.message);
 
     return await classifyIntentV1(
       message,
