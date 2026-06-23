@@ -26,8 +26,9 @@ const {
   getLanguageInstruction,
   detectLanguageWithGPT,
 } = require("../components/webhookFunctions");
+
 // const classifyIntent = require("../services/intentClassifier");
-const classifyIntent = require("../services/newIntentClassifier")
+const { classifyIntent } = require("../services/newIntentClassifier");
 const { mergeBooking, getMissing } = require("../services/bookEngine");
 const answerHotelQuestion = require("../services/hotelKnowledge");
 const {
